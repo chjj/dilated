@@ -1,0 +1,42 @@
+#extends <root.html>
+
+<article>
+  <header>
+    <h1><a href="#{post.permalink}" rel="bookmark">
+      #{post.title}
+    </a></h1>
+    <time datetime="#{post.datetime}" pubdate>
+      ?:post.edit
+        <a href="#{post.edit}">#{post.timestamp}</a>
+      !:post.edit
+        #{post.timestamp}
+    </time>
+  </header>
+  #{post.content}
+  <footer>
+    !:post.prev
+      <a href="#{post.permalink}" rel="bookmark first" title="Permalink">
+        Current Article
+      </a>
+    ?:post.prev
+      <a href="#{post.prev.href}" rel="prev" title="#{post.prev.title}">
+        Previous Article
+      </a>
+    ?:post.next
+      <a href="#{post.next.href}" rel="next" title="#{post.next.title}">
+        Next Article
+      </a>
+    !:post.next
+      <a href="#{post.permalink}" rel="bookmark last" title="Permalink">
+        Current Article
+      </a>
+    `/* maybe remove this conditional */`
+    ?:post.tags
+      <ul>
+        @:post.tags
+          <li><a href="/#{this.tag + post.permalink}"#{this.set ? ' rel="self"' : ''}>
+            #{this.tag}
+          </a></li>
+      </ul>
+  </footer>
+</article>

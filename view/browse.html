@@ -1,0 +1,14 @@
+#extends <section.html>
+
+<p>Hopefully you can find what you're looking for here. If not, it may 
+be worthwhile to try the search up above.</p>
+<ol>
+  @:list
+    <li>
+      <a href="#{this.href}">#{this.text}</a>
+      ?:this.time
+        <time datetime="#{this.datetime}">
+          #{this.time}
+        </time>
+    </li>
+</ol>

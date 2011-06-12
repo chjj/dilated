@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  @:map
+    <url>
+      <loc>http://#{this.loc}</loc>
+      ?:this.lastmod
+        <lastmod>#{this.lastmod}</lastmod>
+      ?:this.priority
+        <priority>#{this.priority}</priority>
+    </url>
+</urlset>

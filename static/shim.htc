@@ -1,0 +1,65 @@
+<!-- shim.htc: an html5 shim, (c) 2011 Christopher Jeffrey (MIT Licensed) (epsilon-not.net) -->
+<PUBLIC:COMPONENT lightWeight="true">
+  <PUBLIC:ATTACH EVENT="ondocumentready" FOR="element" ONEVENT="shim()" />
+</PUBLIC:COMPONENT>
+
+<SCRIPT LANGUAGE="JScript">
+  var shim = function() {
+    if (function() { // make sure this version sucks
+      var a = element.document.createElement('a');
+      a.innerHTML = '<c></c>';
+      return !!(a.childNodes.length > 0);
+    }()) return;
+    
+    var  // basics necessary for the logic below
+      doc = element.document, 
+      head = doc.getElementsByTagName('head')[0], 
+      body = doc.getElementsByTagName('body')[0], 
+      names = new RegExp([
+        '^(abbr|article|aside|audio|canvas|details|figcaption|',
+        'figure|footer|header|hgroup|mark|meter|nav|output|',
+        'progress|section|summary|time|video)$'
+      ].join(''), 'i'),
+      // mutable variables used during the walk
+      all = body.getElementsByTagName('*'), i = 0,
+      cur, el, attr, val, depth;
+    
+    // move any html5 elements out of the head:
+    // if the BODY/HEAD tags are omitted with html5 elements present, 
+    // IE doesn't know which elements to implicitly include in the 
+    // HEAD, so it ends up putting any bugged html5 start-tags there. 
+    // we need to move them into the BODY before we can fix things
+    while (names.test(head.lastChild.tagName)) {
+      body.insertBefore(head.lastChild, body.firstChild);
+    }
+    
+    // walk the dom tree and fix the structure accordingly
+    while (cur = all[i++]) {
+      if (names.test(cur.tagName) && cur.firstChild === null) {
+        // turn all the bugged "start-tag" elements into their real counterparts
+        el = doc.createElement(cur.tagName);
+        for (attr in cur.attributes) {
+          if (val = cur.getAttribute(attr)) 
+            el.setAttribute(attr, val);
+        }
+        cur.parentNode.replaceChild(el, cur);
+        
+        // append all elements until the corresponding 
+        // bugged "close-tag" element is found
+        depth = 0;
+        while (el.nextSibling) {
+          if (el.nextSibling.tagName === el.tagName) {
+            ++depth;
+          } else if (el.nextSibling.tagName === '/'+el.tagName) {
+            if (--depth < 0) break;
+          }
+          el.appendChild(el.nextSibling);
+        }
+        // shouldnt need to check for a nextSibling if everything went 
+        // accordingly (there should always be a nextSibling),
+        // but it cant hurt to do just for good measure
+        if (el.nextSibling) el.parentNode.removeChild(el.nextSibling); 
+      }
+    }
+  };
+</SCRIPT>

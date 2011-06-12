@@ -1,0 +1,26 @@
+#extends <section.html>
+
+<form action="#{form.action}" method="POST">
+  <label>
+    Title:
+    <input type="text" name="title" value="#{post.title}" required>
+  </label>
+  ?:form.slug
+    <label>
+      Slug: 
+      <input type="text" name="slug">
+    </label>
+  <label>
+    Tags:
+    <input type="text" name="tags" value="#{post.tags}">
+  </label>
+  <label>
+    Timestamp:
+    <input type="text" name="timestamp" value="#{post.timestamp}" required>
+  </label>
+  <textarea name="content" required>#{post.content}</textarea>
+  <input type="submit" value="#{form.name}">
+</form>
+
+?:post.content
+  <footer><a href="delete" title="Delete Post">Delete</a></footer>

@@ -1,0 +1,36 @@
+<!doctype html>
+<title>#{title || 'dilated'}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/liquorice" title="Liquorice">
+<link rel="alternate" type="application/atom+xml" href="/feed">
+?:canonical
+  <link rel="canonical" href="#{canonical}">
+<!-- =============================================== code === is === art === -->
+<header>
+  <h1><a href="/" rel="home#{rel.home ? ' self' : ''}">
+    dilated
+  </a></h1>
+  <nav><ul>
+    <li><a href="/browse" rel="archives#{rel.browse ? ' directory' : ''}">
+      Browse
+    </a></li>
+    @:tags
+      <li><a href="/#{this.tag}"#{this.set ? ' rel="tag"' : ''}>
+        #{this.tag}
+      </a></li>
+  </ul></nav>
+</header>
+#body
+<footer>
+  <a href="/feed" rel="alternate">Atom Feed</a>
+  <a href="#search" rel="search">Search Articles</a>
+  <form action="/" method="GET" id="search">
+    <input type="search" name="search" required>
+    <input type="submit" value="Search">
+  </form>
+  <small>
+    <a href="//creativecommons.org/licenses/by/3.0" rel="license">©</a>
+    Copyright 2010-#{new Date().getFullYear()}, Christopher Jeffrey
+  </small>
+  <a href="//github.com/chjj">Source at Github</a>
+</footer>
