@@ -1,6 +1,6 @@
 # dilated
 
-Dilated is a blog written for [http://nodejs.org/](node.js). See a live example 
+Dilated is a blog written for [node.js](http://nodejs.org/). See a live example 
 at [dilated.cc](http://dilated.cc/). It's modeled after 
 [Kroc Camen's](http://camendesign.com/) amazing blog. (It more or less strives 
 to be a faithful port of it.) It's very lightweight: articles are stored as flat 

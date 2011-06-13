@@ -53,12 +53,15 @@ var showdown = (function() {
   
   var hashBlocks = function(text) {
     text = text.replace(/\n/g, '\n\n');
+    // element list taken from remarkable: 
+    //   http://camendesign.com/code/remarkable/remarkable.php
+    // removed ins/del from the original showdown code
     text = text.replace(
-      /^(<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)\b[^\r]*?\n<\/\2>[ \t]*(?=\n+))/gm, 
+      /^(<(article|aside|audio|blockquote|canvas|caption|col|colgroup|dialog|div|d[ltd]|embed|fieldset|figure|figcaption|footer|form|h[1-6r]|header|input|label|legend|li|nav|noscript|object|[ou]l|optgroup|option|p|param|pre|script|section|select|source|table|t(?:body|foot|head)|t[dhr]|textarea|video|iframe|math)\b[^\r]*?\n<\/\2>[ \t]*(?=\n+))/gm, 
       hashElement
     );
     text = text.replace(
-      /^(<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math)\b[^\r]*?.*<\/\2>[ \t]*(?=\n+)\n)/gm, 
+      /^(<(article|aside|audio|blockquote|canvas|caption|col|colgroup|dialog|div|d[ltd]|embed|fieldset|figure|figcaption|footer|form|h[1-6r]|header|input|label|legend|li|nav|noscript|object|[ou]l|optgroup|option|p|param|pre|script|section|select|source|table|t(?:body|foot|head)|t[dhr]|textarea|video|iframe|math)\b[^\r]*?.*<\/\2>[ \t]*(?=\n+)\n)/gm, 
       hashElement
     );
     text = text.replace(

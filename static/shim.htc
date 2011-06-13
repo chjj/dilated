@@ -1,4 +1,4 @@
-<!-- shim.htc: an html5 shim, (c) 2011 Christopher Jeffrey (MIT Licensed) (epsilon-not.net) -->
+<!-- shim.htc: an html5 shim, (c) 2011 Christopher Jeffrey (MIT Licensed) (//github.com/chjj) -->
 <PUBLIC:COMPONENT lightWeight="true">
   <PUBLIC:ATTACH EVENT="ondocumentready" FOR="element" ONEVENT="shim()" />
 </PUBLIC:COMPONENT>

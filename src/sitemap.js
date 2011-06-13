@@ -9,12 +9,12 @@ module.exports = function(req, res, next) {
     if (err || !posts) return next(500);
     posts = posts.map(function(post) {
       return {
-        loc: req.app.host + '/' + post.id,
+        loc: config.host + '/' + post.id,
         lastmod: (new Date(post.updated)).toISOString(),
         priority: '0.5'
       };
     });
-    posts.push({loc: req.app.host + '/', priority: '0'});
+    posts.push({loc: config.host + '/', priority: '0'});
     res.render('sitemap.xml', { map: posts });
   });
 };

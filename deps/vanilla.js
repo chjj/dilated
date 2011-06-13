@@ -104,8 +104,10 @@ Application.prototype.configure = function(env, func) {
 };
 
 Application.prototype.__defineGetter__('url', function() {
-  return 'http' + (this._https ? 's' : '') + '://' 
-    + this.host + (this.port != 80 ? ':' + this.port : '');
+  return 'http' 
+    + (this._https ? 's' : '') + '://' 
+    + (this.settings.host || this.host) 
+    + (this.port != 80 ? ':' + this.port : '');
 });
 
 Application.prototype.mount = function(route, child) {
@@ -308,16 +310,15 @@ Response.prototype.redirect = function(path, code) {
   if (!~path.indexOf('//')) {
     if (app.route) path = join(app.route, path);
     if (path[0] === '/') path = path.slice(1);
-    path = 'http' + (app._https ? 's' : '') + '://' 
-           + req.headers.host + '/' + path;
+    path = 'http' + (req.socket.encrypted ? 's' : '') 
+           + '://' + req.headers.host + '/' + path;
   }
   // http 1.0 user agents don't understand 303's:
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
   if (code == 303 && req.httpVersionMinor < 1) {
     code = 302;
   }
-  res.statusCode = +code;
-  res.header('Location', path);
+  res.writeHead(+code, { 'Location': path });
   res.end();
 };
 
@@ -459,7 +460,9 @@ Response.prototype.sendfile = function(file, next) {
 Request.prototype.header = function(key) {
   var name = key.toLowerCase(), head = this.headers;
   if (name === 'referer' || name === 'referrer') {
-    return head.referer || head.referrer || this.app.url + '/';
+    return head.referer || head.referrer 
+      || 'http' + (this.socket.encrypted ? 's' : '') 
+         + '://' + this.headers.host + '/';
   }
   return head[name] || '';
 };
@@ -738,161 +741,6 @@ vanilla.favicon = function(opt) {
     }
     next();
   };
-};
-
-// this isnt ideal if there is any middleware (like static)
-// after the routes. a one dimensional stack would solve 
-// this problem (router + request listener). it may be 
-// better just to use the req cache api.
-vanilla.conditionalGet = function(opt) {
-  var check = opt.check || opt;
-  return function(req, res, next) {
-    if (req.method !== 'GET' 
-      && req.method !== 'HEAD') return next();
-    check(req, res, function(tag) {
-      if (!tag) return next();
-      if (typeof tag === 'string') {
-        tag = tag.replace(/^W\/|["']/gi, '');
-        res.setHeader('ETag', '"' + tag + '"');
-        var none = req.headers['if-none-match'];
-        if (none) {
-          none = none.replace(/^W\/|["']/gi, '');
-          if (tag !== none) {
-            return next();
-          }
-        } else {
-          return next();
-        }
-      } else {
-        tag = tag.valueOf();
-        res.setHeader('Last-Modified', tag);
-        var since = req.headers['if-modified-since'];
-        if (since) {
-          since = since.valueOf();
-          if (tag !== since) {
-            return next();
-          }
-        } else {
-          return next();
-        }
-      }
-      res.statusCode = 304;
-      res.end();
-    });
-  };
-};
-
-// serverside caching
-vanilla.cache = function(opt) {
-  if (typeof opt === 'function') {
-    opt = { check: opt };
-  }
-  var cache = {}, total = 0;
-  var check = opt.check, flag = opt.hash;
-  if (!check) {
-    var time = opt.time || 2 * 60 * 1000 * 1000;
-    check = function(req, res, next) {
-      next(Date.now() - time);
-    };
-  }
-  if (!flag) {
-    flag = function(req) {
-      return req.url + req.headers.cookie;
-    };
-  }
-  var max = opt.max || 10 * 1024 * 1024;
-  return function(req, res, next) {
-    if (req.method !== 'GET' 
-      && req.method !== 'HEAD') return next();
-    check(req, res, function(time) {
-      if (!time) return next();
-      
-      var hash = flag(req);
-      
-      if (cache[hash]) {
-        var slot = cache[hash];
-        if (slot.time >= time) {
-          res.writeHead(slot.code, slot.headers);
-          return res.end(slot.body);
-        } else {
-          total -= cache[hash].body.length;
-          delete cache[hash];
-          return next();
-        }
-      }
-      
-      if (total > max) {
-        total = 0;
-        cache = {};
-      }
-      
-      var send = res.send;
-      res.send = function(data) {
-        res.send = send;
-        
-        var code, writeHead = res.writeHead;
-        res.writeHead = function(c) {
-          res.writeHead = writeHead;
-          code = c;
-          return writeHead.apply(res, arguments);
-        };
-        
-        var headers, _storeHeader = res._storeHeader;
-        res._storeHeader = function(_, h) {
-          res._storeHeader = _storeHeader;
-          headers = h;
-          return _storeHeader.apply(res, arguments);
-        };
-        
-        var ret = send.apply(res, arguments);
-        
-        if (code === 200 && !res.nocache) { 
-          var slot = cache[hash] = {};
-          slot.code = code; 
-          slot.headers = headers; 
-          slot.body = Buffer.isBuffer(data) 
-                        ? data : new Buffer(data);
-          slot.time = Date.now();
-          total += slot.body.length;
-        }
-        
-        return ret;
-      };
-      
-      next();
-    });
-  };
-};
-
-vanilla.multipart = function(opt) {
-  try {
-    var parted = require('parted');
-  } catch(e) {
-    var formidable = require('formidable');
-  }
-  return parted 
-    ? function(req, res, next) {
-      var type = req.headers['content-type'];
-      if (type && ~type.indexOf('multipart')) {
-        parted(req, next, opt);
-      } else {
-        next();
-      }
-    }
-    : function(req, res, next) {
-      var type = req.headers['content-type'];
-      if (type && ~type.indexOf('multipart')) {
-        var form = new formidable.IncomingForm();
-        merge(form, opt);
-        form.parse(req, function(err, fields, files) {
-          if (files) for (var k in files) fields[k] = files[k].path;
-          req.body = fields || {};
-          next(err);
-        });
-      } else {
-        next();
-      }
-    };
 };
 
 vanilla.cookieParser = function() {

@@ -38,7 +38,7 @@ var build = function(req, res, posts) {
     return {
       title: utils.escapeHTML(post.title),
       href: '/' + post.id,
-      id: tag(req.app.host, timestamp.getFullYear(), post.id),
+      id: tag(config.host, timestamp.getFullYear(), post.id),
       published: timestamp.toISOString(), 
       updated: update,
       content: utils.markdown(post.content)
@@ -52,11 +52,11 @@ var build = function(req, res, posts) {
   });
   
   res.locals({
-    host: req.app.host,
+    host: config.host,
     self: '/feed',
     updated: posts[0].updated,
     alternate: '/',
-    id: tag(req.app.host, 2010, 'index'),
+    id: tag(config.host, 2010, 'index'),
     entries: posts
   });
   

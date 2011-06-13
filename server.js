@@ -1,12 +1,13 @@
 var vanilla = require('./deps/vanilla'), 
     app = vanilla.createServer();
 
-var Post = require('./src/post');
-
 // ========== SETTINGS ========== //
 app.configure(function() {
   var read = require('fs').readFileSync;
-  GLOBAL.config = JSON.parse(read(__dirname + '/config.json', 'utf-8'));
+  config = JSON.parse(read(__dirname + '/config.json', 'utf-8'));
+  config.content = config.content.replace(/^\./, __dirname);
+  config.root = __dirname;
+  
   app.set('views', __dirname + '/view');
   //app.set('engine', './liquor'); 
 });
@@ -19,31 +20,13 @@ app.configure('development', function() {
 
 // ========== MIDDLEWARE ========== //
 app.configure(function() {
-  var Pingback = require('./deps/pingback'),
+  var Post = require('./src/post'),
+      Pingback = require('./deps/pingback'),
       prettyHTML = require('./src/utils').prettyHTML,
       STATUS_CODES = require('http').STATUS_CODES;
   
   app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
   app.use(vanilla.static(__dirname + '/static'));
-  
-  // lazy 304's - can have a negative 
-  // effect in some situations
-  // app.use(vanilla.conditionalGet(
-  //   function(req, res, next) {
-  //     next(Post.updated);
-  //   }
-  // ));
-  
-  // serverside caching gives us an insane
-  // amount of requests per second, but 
-  // can potentially use a lot of memory
-  // app.use(vanilla.cache({
-  //   max: 10 * 1024 * 1024,
-  //   check: function(req, res, next) {
-  //     next(Post.updated);
-  //   }
-  // }));
-  
   app.use(vanilla.cookieParser());
   app.use(vanilla.bodyParser({limit: 100 * 1024}));
   
@@ -112,18 +95,17 @@ app.configure(function() {
   app.use(function(err, req, res, next) {
     if (typeof err === 'number') {
       err = { code: err };
-    } else {
-      console.log(err.stack || err + '');
+    } else if (!err.code) {
+      console.error(err.stack || err + '');
     }
     
-    var code = res.statusCode = +(err.code || (err.code = 500));
+    var code = res.statusCode = +err.code || 500;
     if (!STATUS_CODES[code]) code = 500;
+    var status = code + ': ' + STATUS_CODES[code];
     
     // clear headers - hack
     res._headers = {};
     res._headerNames = {};
-    
-    var status = code + ': ' + STATUS_CODES[code];
     
     res.render('error.html', { 
       title: status, 
@@ -147,7 +129,7 @@ app.configure(function() {
   app.get('/liquorice', style.handle({
     file: __dirname + '/static/style.css',
     dir: __dirname,
-    minify: false, // !dev, // false for now
+    minify: false, // false for now
     cache: !dev
   }));
   
@@ -180,11 +162,8 @@ if (!module.parent) {
 
 // log uncaught errors
 app.configure('production', function() {
-  var i = 0, open = require('fs').createWriteStream, stream;
   process.on('uncaughtException', function on(err) {
-    if (++i > 500) return process.removeListener(on);
-    stream || (stream = open('/tmp/http_error.log'));
     err = err.stack || err + '';
-    stream.write(i + ' - ' + new Date().toISOString() + ': ' + err + '\n\n');
+    console.error(i + ' - ' + new Date().toISOString() + ': ' + err);
   });
 });

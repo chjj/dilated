@@ -172,50 +172,60 @@ style.preprocess = function(css, func, opt) {
 // mixins and nested rules - not implemented yet as they are
 // very up in the air at the moment (Tab Atkins hasn't even drafted a spec)
 
-/*
 // ========== MIXINS ========== //
-var mixin = function(css) {
+// should work, but not tested yet
+var mixin = 1 || function(css) { 
   var traits = {};
   
   css = css.replace(
-  /@trait[ \t]+([\w\-]+)(?:\(([^)]+)\))?\s*{([^}]+)}/g, 
-  function(str, name, params, body) {
-    params = params ? params.split(/\s*,\s* ?/) : [];
-    params = (function() {
-      var p = {};
-      params.forEach(function(v, i) {
-        p[v] = i;
-      });
-      return p;
-    })();
-    traits[name] = function() {
-      var args = arguments;
-      return body.replace(/\$[\w\-]+/g, function(name) {
-        return args[params[name]] || name;
-      });
-    };
-    return '';
-  });
+    /@trait[ \t]+([\w\-]+)(?:\(([^)]+)\))?\s*{([^}]+)}/g, 
+    function(str, name, params, body) {
+      params = params ? params.split(/\s*,\s*/) : [];
+      params = (function() {
+        var p = {};
+        params.forEach(function(v, i) {
+          p[v] = i;
+        });
+        return p;
+      })();
+      traits[name] = function() {
+        var args = arguments;
+        return body.replace(/\$[\w\-]+/g, function(name) {
+          return args[params[name]] || name;
+        });
+      };
+      return '';
+    }
+  );
   
   css = css.replace(
-  /@mixin[ \t]+([\w\-]+)\s*(?:\(([^)]+)\))?;/g, 
-  function(str, name, args) {
-    if (!traits[name]) return '';
-    args = args.replace(/\(([^)]+)\)/g, function(__, s) { 
-      return s.replace(/,/g, '~~'); 
-    });
-    args = args.replace(/,/g, '##');
-    args = args.replace(/~~/g, ',');
-    args = args ? args.split(/\s*##\s* ?/) : [];
-    return traits[name].apply(null, args);
-  });
+    /@mixin[ \t]+([\w\-]+)\s*(?:\(([^)]+)\))?;/g, 
+    function(str, name, args) {
+      if (!traits[name]) {
+        throw new 
+          SyntaxError('Non-existent mixin: ' + name);
+      }
+      // because commas can appear in css property values,
+      // the proposed solution for placing them in parameters
+      // was to enclose them in parantheses. this is a
+      // shameless hack to account for it because i 
+      // dont want to write a real parser
+      args = args.replace(/\(([^)]+)\)/g, function(__, s) { 
+        return s.replace(/,/g, '~~'); 
+      });
+      args = args.replace(/,/g, '##');
+      args = args.replace(/~~/g, ',');
+      args = args ? args.split(/\s*##\s*/) : [];
+      return traits[name].apply(null, args);
+    }
+  );
   
   return css;
 };
 
 // ========== NESTED RULES ========== //
 // strip whitespace and comments
-var clean = function(str) {
+var clean = 1 || function(str) {
   return str
     .replace(/\/\*[\s\S]+?\*\//g, '')
     .replace(/^\s+|\s+$/g, '')
@@ -223,7 +233,7 @@ var clean = function(str) {
     .replace(/\/\*$/, '');
 };
 
-var nested = function(css) {
+var nested = 1 || function(css) {
   var cap, subject, selector, props, 
       stack = [], sel = [], out = [];
   var state = function() {
@@ -257,25 +267,30 @@ var nested = function(css) {
       // left a rule into an at rule
       if (state() === 'IN_AT_RULE') {
         out.push(subject + '}');
-      } else { // left a rule into the top level or another rule
+      } else { 
+        // left a rule into the top level or another rule
         sel.pop();
         out.push(subject + '}');
-        if (state() === 'IN_RULE') { // left a rule into a rule
+        if (state() === 'IN_RULE') { 
+          // left a rule into a rule
           out.push(sel[sel.length-1] + '{');
         }
-        // to many curlys
       }
-      // ---------
+      // too many curly braces
     }
   }
   return out.join('\n').replace(/[^{}]+{\s+}/g, '');
 };
-*/
 
-// lazy copy & paste testing for nesting
-/*
+/* lazy copy & paste testing for nesting
 var nest = [
 '',
+'div {',
+'  background: green;',
+'  & > span {',
+'    color: orange;',
+'  };',
+'}',
 'a {',
 '  color: red;',
 '  & > b {',
@@ -301,5 +316,4 @@ var nest = [
 ''
 ].join('\n');
 
-console.log(nested(nest));
-*/
+console.log(nested(nest));*/

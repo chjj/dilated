@@ -117,7 +117,7 @@ var $GET = {
     });
   },
   'view': function(req, res, params, post) {
-    res.header('X-Pingback', res.app.url + '/pingback');
+    res.header('X-Pingback', 'http://' + config.host + '/pingback');
     if (req.pathname === '/') {
       res.local('rel').home = true;
     }
@@ -166,7 +166,6 @@ exports.get = function(req, res, next) {
   
   if (params.asset) {
     var path = Post.getAssetPath(params.slug, params.asset);
-    console.log('asset:', path);
     return res.sendfile(path, function() {
       next(404);
     });
