@@ -497,7 +497,11 @@ var _updateTags = function() {
         // is the post unindexed?
         file = path.join(content_dir, file);
         postHeader(file, function(err, data) {
-          if (err) return;
+          if (err || data.draft) {
+            if (err) console.error('Unable to parse %s.', file);
+            --len || done(list);
+            return;
+          }
           
           data.id = id;
           data.timestamp = mstime(data.timestamp); 
@@ -529,7 +533,7 @@ var _updateTags = function() {
       keys.forEach(function(id) {
         // the post no longer exists!
         if (!~list.indexOf(id + extension)) {
-          if (__meta[id]) delete __meta[id];
+          if (__meta[id]) Post.remove(id); //delete __meta[id];
         }
       });
     }
