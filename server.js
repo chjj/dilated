@@ -9,7 +9,7 @@ app.configure(function() {
   config.root = __dirname;
   
   app.set('views', __dirname + '/view');
-  //app.set('engine', './liquor'); 
+  app.set('engine', './liquor'); 
 });
 
 // ========== DEVELOPMENT ========== //

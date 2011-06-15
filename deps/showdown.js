@@ -19,15 +19,16 @@
 //
 
 // showdown-clean
-// a fork by chjj (//github.com/chjj)
-// includes some GitHub Flavored Markdown 
-// modifications originally by Tekkub
+// A fork by chjj (//github.com/chjj).
+// Includes some GitHub Flavored Markdown 
+// modifications (originally by Tekkub),
+// as well as some other useful extras.
 
 var showdown = (function() {
-  var g_urls,
-      g_titles,
-      g_html_blocks,
-      g_list_level,
+  var __urls,
+      __titles,
+      __blocks, // html blocks
+      __level, // for lists
       githubify;
   
   var escapeQuotes = function(str) {
@@ -39,11 +40,11 @@ var showdown = (function() {
       /^[ ]{0,3}\[(.+)\]:[ \t]*\n?[ \t]*<?(\S+?)>?[ \t]*\n?[ \t]*(?:(\n*)['(](.+?)[')][ \t]*)?(?:\n+|\Z)/gm,
       function ($0, $1, $2, $3, $4) {
         $1 = $1.toLowerCase();
-        g_urls[$1] = encodeAmpsAndAngles($2);  
+        __urls[$1] = encodeAmpsAndAngles($2);  
         if ($3) {
           return $3 + $4;
         } else if ($4) {
-          g_titles[$1] = escapeQuotes($4);
+          __titles[$1] = escapeQuotes($4);
         }
         return '';
       }
@@ -53,6 +54,7 @@ var showdown = (function() {
   
   var hashBlocks = function(text) {
     text = text.replace(/\n/g, '\n\n');
+    
     // element list taken from remarkable: 
     //   http://camendesign.com/code/remarkable/remarkable.php
     // removed ins/del from the original showdown code
@@ -76,6 +78,7 @@ var showdown = (function() {
       /(?:\n\n)([ ]{0,3}(?:<([?%])[^\r]*?\2>)[ \t]*(?=\n{2,}))/g, 
       hashElement
     );
+    
     text = text.replace(/\n\n/g, '\n');
     return text;
   };
@@ -85,7 +88,11 @@ var showdown = (function() {
     blockText = blockText.replace(/\n\n/g, '\n');
     blockText = blockText.replace(/^\n/, '');
     blockText = blockText.replace(/\n+$/g, '');
-    blockText = '\n\n~K' + (g_html_blocks.push(blockText)-1) + 'K\n\n';
+    
+    // my addition, this allows inline formatting inside blocks
+    blockText = runSpanGamut(blockText); 
+    
+    blockText = '\n\n~K' + (__blocks.push(blockText)-1) + 'K\n\n';
     return blockText;
   };
   
@@ -154,10 +161,10 @@ var showdown = (function() {
       }
       url = '#' + link_id;
       
-      if (g_urls[link_id] !== undefined) {
-        url = g_urls[link_id];
-        if (g_titles[link_id] !== undefined) {
-          title = g_titles[link_id];
+      if (__urls[link_id] != null) {
+        url = __urls[link_id];
+        if (__titles[link_id] != null) {
+          title = __titles[link_id];
         }
       } else {
         if (/\(\s*\)$/m.test($1)) {
@@ -175,6 +182,13 @@ var showdown = (function() {
       title = escapeCharacters(title, '*_');
       result += ' title="' + title + '"';
     }
+    
+    // my addition, add rel-external
+    // to links with external domains
+    if (~url.indexOf('//')) {
+      result += ' rel="external"';
+    }
+    
     result += '>' + link_text + '</a>';
     return result;
   };
@@ -204,10 +218,10 @@ var showdown = (function() {
         link_id = alt_text.toLowerCase().replace(/ ?\n/g,' ');
       }
       url = '#' + link_id;
-      if (g_urls[link_id] != undefined) {
-        url = g_urls[link_id];
-        if (g_titles[link_id] != undefined) {
-          title = g_titles[link_id];
+      if (__urls[link_id] != null) {
+        url = __urls[link_id];
+        if (__titles[link_id] != null) {
+          title = __titles[link_id];
         }
       } else {
         return whole_match;
@@ -246,7 +260,7 @@ var showdown = (function() {
   var doLists = function(text) {
     var whole_list;
     text += '~0';
-    if (g_list_level) {
+    if (__level) {
       whole_list = /^(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/gm;
       text = text.replace(whole_list, function($0, $1, $2) {
         var list = $1, result,
@@ -274,7 +288,7 @@ var showdown = (function() {
   };
   
   var processListItems = function(list_str) {
-    g_list_level++;
+    __level++;
     list_str = list_str.replace(/\n{2,}$/, '\n');
     list_str += '~0';
     list_str = list_str.replace(
@@ -294,7 +308,7 @@ var showdown = (function() {
       }
     );
     list_str = list_str.replace(/~0/g, '');
-    g_list_level--;
+    __level--;
     return list_str;
   };
   
@@ -318,7 +332,7 @@ var showdown = (function() {
   
   var hashBlock = function(text) {
     text = text.replace(/(^\n+|\n+$)/g, '');
-    return '\n\n~K' + (g_html_blocks.push(text)-1) + 'K\n\n';
+    return '\n\n~K' + (__blocks.push(text)-1) + 'K\n\n';
   };
   
   var doCodeSpans = function(text) {
@@ -399,7 +413,7 @@ var showdown = (function() {
     }
     for (i = 0, l = out.length; i < l; i++) {
       while (/~K(\d+)K/.test(out[i])) {
-        str = g_html_blocks[RegExp.$1];
+        str = __blocks[RegExp.$1];
         str = str.replace(/\$/g, '$$$$'); 
         out[i] = out[i].replace(/~K\d+K/, str);
       }
@@ -517,12 +531,18 @@ var showdown = (function() {
     return text;
   };
   
-  return function(text, gfm) {
-    g_urls = [];
-    g_titles = [];
-    g_html_blocks = [];
-    g_list_level = 0;
-    githubify = !!gfm;
+  return function(text, opt) {
+    opt || (opt = {});
+    if (opt === true) {
+      opt = { gfm: true };
+    }
+    
+    __urls = [];
+    __titles = [];
+    __blocks = [];
+    __level = 0;
+    
+    githubify = !!opt.gfm;
     
     text = text.replace(/~/g, '~T');
     text = text.replace(/\$/g, '~D');
