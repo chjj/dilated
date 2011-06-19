@@ -25,26 +25,26 @@
 // as well as some other useful extras.
 
 var showdown = (function() {
+  var options;
   var __urls,
       __titles,
-      __blocks, // html blocks
-      __level, // for lists
-      githubify;
+      __blocks, 
+      __level; 
   
   var escapeQuotes = function(str) {
     return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
   };
   
   var stripLinkDefinitions = function(text) {
-    var text = text.replace(
+    text = text.replace(
       /^[ ]{0,3}\[(.+)\]:[ \t]*\n?[ \t]*<?(\S+?)>?[ \t]*\n?[ \t]*(?:(\n*)['(](.+?)[')][ \t]*)?(?:\n+|\Z)/gm,
-      function ($0, $1, $2, $3, $4) {
-        $1 = $1.toLowerCase();
-        __urls[$1] = encodeAmpsAndAngles($2);  
-        if ($3) {
-          return $3 + $4;
-        } else if ($4) {
-          __titles[$1] = escapeQuotes($4);
+      function (__, id, url, space, title) {
+        id = id.toLowerCase();
+        __urls[id] = encodeAmpsAndAngles(url);
+        if (space) {
+          return space + title;
+        } else if (title) {
+          __titles[id] = escapeQuotes(title);
         }
         return '';
       }
@@ -57,7 +57,6 @@ var showdown = (function() {
     
     // element list taken from remarkable: 
     //   http://camendesign.com/code/remarkable/remarkable.php
-    // removed ins/del from the original showdown code
     text = text.replace(
       /^(<(article|aside|audio|blockquote|canvas|caption|col|colgroup|dialog|div|d[ltd]|embed|fieldset|figure|figcaption|footer|form|h[1-6r]|header|input|label|legend|li|nav|noscript|object|[ou]l|optgroup|option|p|param|pre|script|section|select|source|table|t(?:body|foot|head)|t[dhr]|textarea|video|iframe|math)\b[^\r]*?\n<\/\2>[ \t]*(?=\n+))/gm, 
       hashElement
@@ -83,8 +82,7 @@ var showdown = (function() {
     return text;
   };
   
-  var hashElement = function($0, $1) {
-    var blockText = $1;
+  var hashElement = function(__, blockText) {
     blockText = blockText.replace(/\n\n/g, '\n');
     blockText = blockText.replace(/^\n/, '');
     blockText = blockText.replace(/\n+$/g, '');
@@ -112,7 +110,7 @@ var showdown = (function() {
   
   var runSpanGamut = function(text) {
     text = doCodeSpans(text);
-    text = escapeSpecialCharsWithinTagAttributes(text);
+    text = escapeSpecialAttrChars(text);
     text = encodeBackslashEscapes(text);
     text = doImages(text);
     text = doAnchors(text);
@@ -123,12 +121,11 @@ var showdown = (function() {
     return text;
   };
   
-  var escapeSpecialCharsWithinTagAttributes = function(text) {
-    var regex = /(<[a-z\/!$]('[^']*'|'[^']*'|[^''>])*>|<!(--.*?--\s*)+>)/gi;
-    text = text.replace(regex, function($0) {
-      var tag = $0.replace(/(.)<\/?code>(?=.)/g, '$1`');
-      tag = escapeCharacters(tag, '\\`*_');
-      return tag;
+  var escapeSpecialAttrChars = function(text) {
+    var pattern = /<[a-z\/!$]('[^']*'|'[^']*'|[^''>])*>|<!(--.*?--\s*)+>/gi;
+    text = text.replace(pattern, function(tag) {
+      tag = tag.replace(/(.)<\/?code>(?=.)/g, '$1`');
+      return escapeCharacters(tag, '\\`*_');
     });
     return text;
   };
@@ -150,27 +147,28 @@ var showdown = (function() {
   };
   
   var writeAnchorTag = function($0, $1, $2, $3, $4, $5, $6, $7) {
-    var link_text = $2,
-        link_id = $3.toLowerCase(),
+    var match = $1, 
+        text = $2, // link text
+        id = $3.toLowerCase(), // link id
         url = $4,
         title = $7 || '',
         result;
     if (url === '') {
-      if (link_id === '') {
-        link_id = link_text.toLowerCase().replace(/ ?\n/g, ' ');
+      if (id === '') {
+        id = text.toLowerCase().replace(/ ?\n/g, ' ');
       }
-      url = '#' + link_id;
+      url = '#' + id;
       
-      if (__urls[link_id] != null) {
-        url = __urls[link_id];
-        if (__titles[link_id] != null) {
-          title = __titles[link_id];
+      if (__urls[id] != null) {
+        url = __urls[id];
+        if (__titles[id] != null) {
+          title = __titles[id];
         }
       } else {
-        if (/\(\s*\)$/m.test($1)) {
+        if (/\(\s*\)$/m.test(match)) {
           url = '';
         } else {
-          return $1;
+          return match;
         }
       }
     }  
@@ -189,7 +187,7 @@ var showdown = (function() {
       result += ' rel="external"';
     }
     
-    result += '>' + link_text + '</a>';
+    result += '>' + text + '</a>';
     return result;
   };
   
@@ -206,30 +204,30 @@ var showdown = (function() {
   };
   
   var writeImageTag = function($0, $1, $2, $3, $4, $5, $6, $7) {
-    var whole_match = $1,
-        alt_text = $2,
-        link_id = $3.toLowerCase(),
+    var match = $1, // entire match
+        alternate = $2, // alt text
+        id = $3.toLowerCase(), // link id
         url = $4,
         title = $7,
         result;
     if (!title) title = '';
     if (url === '') {
-      if (link_id === '') {
-        link_id = alt_text.toLowerCase().replace(/ ?\n/g,' ');
+      if (id === '') {
+        id = alternate.toLowerCase().replace(/ ?\n/g,' ');
       }
-      url = '#' + link_id;
-      if (__urls[link_id] != null) {
-        url = __urls[link_id];
-        if (__titles[link_id] != null) {
-          title = __titles[link_id];
+      url = '#' + id;
+      if (__urls[id] != null) {
+        url = __urls[id];
+        if (__titles[id] != null) {
+          title = __titles[id];
         }
       } else {
-        return whole_match;
+        return match;
       }
     }  
-    alt_text = escapeQuotes(alt_text);
+    alternate = escapeQuotes(alternate);
     url = escapeCharacters(url, '*_');
-    result = '<img src="' + url + '" alt="' + alt_text + '"';
+    result = '<img src="' + url + '" alt="' + alternate + '"';
     title = escapeQuotes(title);
     title = escapeCharacters(title, '*_');
     result += ' title="' + title + '"/>';
@@ -237,20 +235,20 @@ var showdown = (function() {
   };
   
   var doHeaders = function(text) {
-    text = text.replace(/^(.+)[ \t]*\n=+[ \t]*\n+/gm, function($0, $1) {
-      return hashBlock('<h1>' + runSpanGamut($1) + '</h1>');
+    text = text.replace(/^(.+)[ \t]*\n=+[ \t]*\n+/gm, function(__, title) {
+      return hashBlock('<h1>' + runSpanGamut(title) + '</h1>');
     });
-    text = text.replace(/^(.+)[ \t]*\n-+[ \t]*\n+/gm, function($0, $1) {
-      return hashBlock('<h2>' + runSpanGamut($1) + '</h2>');
+    text = text.replace(/^(.+)[ \t]*\n-+[ \t]*\n+/gm, function(__, title) {
+      return hashBlock('<h2>' + runSpanGamut(title) + '</h2>');
     });
     text = text.replace(
       /^(\#{1,6})[ \t]*(.+?)[ \t]*\#*\n+/gm, 
-      function($0, $1, $2) {
-        var h_level = $1.length;
+      function(__, prefix, title) {
+        var level = prefix.length;
         return hashBlock(
-          '<h' + h_level + '>' 
-          + runSpanGamut($2) 
-          + '</h' + h_level + '>'
+          '<h' + level + '>' 
+          + runSpanGamut(title) 
+          + '</h' + level + '>'
         );
       }
     );
@@ -258,46 +256,44 @@ var showdown = (function() {
   };
   
   var doLists = function(text) {
-    var whole_list;
     text += '~0';
     if (__level) {
-      whole_list = /^(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/gm;
-      text = text.replace(whole_list, function($0, $1, $2) {
-        var list = $1, result,
-            list_type = /[*+-]/g.test($2) ? 'ul' : 'ol';
-        list = list.replace(/\n{2,}/g, '\n\n\n');
-        result = processListItems(list);
-        result = result.replace(/\s+$/, '');
-        result = '<' + list_type + '>' + result + '</' + list_type + '>\n';
-        return result;
-      });
+      text = text.replace(
+        /^(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/gm, 
+        function(__, list, bullet) {
+          var result, type = /[*+-]/g.test(bullet) ? 'ul' : 'ol';
+          list = list.replace(/\n{2,}/g, '\n\n\n');
+          result = processListItems(list);
+          result = result.replace(/\s+$/, '');
+          result = '<' + type + '>' + result + '</' + type + '>\n';
+          return result;
+        }
+      );
     } else {
-      whole_list = /(\n\n|^\n?)(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/g;
-      text = text.replace(whole_list,function($0, $1, $2, $3) {
-        var runup = $1, list = $2, result,
-            list_type = /[*+-]/g.test($3) ? 'ul' : 'ol';
-        list = list.replace(/\n{2,}/g, '\n\n\n');
-        result = processListItems(list);
-        result = runup + '<' + list_type + '>\n' 
-                 + result + '</' + list_type + '>\n';  
-        return result;
-      });
+      text = text.replace(
+        /(\n\n|^\n?)(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/g, 
+        function(__, runup, list, bullet) {
+          var result, type = /[*+-]/g.test(bullet) ? 'ul' : 'ol';
+          list = list.replace(/\n{2,}/g, '\n\n\n');
+          result = processListItems(list);
+          result = runup + '<' + type + '>\n' 
+                   + result + '</' + type + '>\n';  
+          return result;
+        }
+      );
     }
     text = text.replace(/~0/, '');
     return text;
   };
   
-  var processListItems = function(list_str) {
+  var processListItems = function(list) {
     __level++;
-    list_str = list_str.replace(/\n{2,}$/, '\n');
-    list_str += '~0';
-    list_str = list_str.replace(
+    list = list.replace(/\n{2,}$/, '\n');
+    list += '~0';
+    list = list.replace(
       /(\n)?(^[ \t]*)([*+-]|\d+[.])[ \t]+([^\r]+?(\n{1,2}))(?=\n*(~0|\2([*+-]|\d+[.])[ \t]+))/gm,
-      function($0, $1, $2, $3, $4){
-        var item = $4,
-            leading_line = $1,
-            leading_space = $2;
-        if (leading_line || /\n{2,}/.test(item)) {
+      function(__, leadingLine, leadingSpace, bullet, item){
+        if (leadingLine || /\n{2,}/.test(item)) {
           item = runBlockGamut(outdent(item));
         } else {
           item = doLists(outdent(item));
@@ -307,23 +303,22 @@ var showdown = (function() {
         return  '<li>' + item + '</li>\n';
       }
     );
-    list_str = list_str.replace(/~0/g, '');
+    list = list.replace(/~0/g, '');
     __level--;
-    return list_str;
+    return list;
   };
   
   var doCodeBlocks = function(text) {
     text += '~0';
     text = text.replace(
       /(?:\n\n|^)((?:(?:[ ]{4}|\t).*\n+)+)(\n*[ ]{0,3}[^ \t\n]|(?=~0))/g,
-      function($0, $1, $2) {
-        var codeblock = $1, nextChar = $2;
-        codeblock = encodeCode( outdent(codeblock));
-        codeblock = detab(codeblock);
-        codeblock = codeblock.replace(/^\n+/g, '');
-        codeblock = codeblock.replace(/\n+$/g, '');
-        codeblock = '<pre><code>' + codeblock + '\n</code></pre>';
-        return hashBlock(codeblock) + nextChar;
+      function(__, block, nextChar) {
+        block = encodeCode(outdent(block));
+        block = detab(block);
+        block = block.replace(/^\n+/g, '');
+        block = block.replace(/\n+$/g, '');
+        block = '<pre><code>' + block + '\n</code></pre>';
+        return hashBlock(block) + nextChar;
       }
     );
     text = text.replace(/~0/, '');
@@ -336,13 +331,13 @@ var showdown = (function() {
   };
   
   var doCodeSpans = function(text) {
-    text = text.replace(
-      /(^|[^\\])(`+)([^\r]*?[^`])\2(?!`)/gm, 
-      function($0, $1, $2, $3, $4) {
-        $3 = $3.replace(/^([ \t]*)/g, '');  
-        $3 = $3.replace(/[ \t]*$/g, '');  
-        $3 = encodeCode($3);
-        return $1 + '<code>' + $3 + '</code>';
+    text = text.replace( 
+      /(^|[^\\])(`+)([^\r\n]*?[^`])\2(?!`)/gm, 
+      function(__, pre, ticks, code) {
+        code = code.replace(/^([ \t]*)/g, '');  
+        code = code.replace(/[ \t]*$/g, '');  
+        code = encodeCode(code);
+        return pre + '<code>' + code + '</code>';
       }
     );
     return text;
@@ -362,7 +357,7 @@ var showdown = (function() {
       '<strong>$2</strong>'
     );
     
-    if (githubify) {
+    if (options.gfm) {
       // ** GFM **  "~E95E" == escaped "_"
       text = text.replace(/(\w)_(\w)/g, '$1~E95E$2'); 
     }
@@ -374,18 +369,18 @@ var showdown = (function() {
   var doBlockQuotes = function(text) {
     text = text.replace(
       /((^[ \t]*>[ \t]?.+\n(.+\n)*\n*)+)/gm,
-      function(__, bq) {
-        bq = bq.replace(/^[ \t]*>[ \t]?/gm, '~0'); 
-        bq = bq.replace(/~0/g, '');
-        bq = bq.replace(/^[ \t]+$/gm, ''); 
-        bq = runBlockGamut(bq); 
-        bq = bq.replace(/(^|\n)/g, '$1  ');
-        bq = bq.replace(/(\s*<pre>[^\r]+?<\/pre>)/gm, function(__, pre) {
+      function(__, quote) {
+        quote = quote.replace(/^[ \t]*>[ \t]?/gm, '~0'); 
+        quote = quote.replace(/~0/g, '');
+        quote = quote.replace(/^[ \t]+$/gm, ''); 
+        quote = runBlockGamut(quote); 
+        quote = quote.replace(/(^|\n)/g, '$1  ');
+        quote = quote.replace(/(\s*<pre>[^\r]+?<\/pre>)/gm, function(__, pre) {
           pre = pre.replace(/^  /mg, '~0');
           pre = pre.replace(/~0/g, '');
           return pre;
         });
-        return hashBlock('<blockquote>\n' + bq + '\n</blockquote>');
+        return hashBlock('<blockquote>\n' + quote + '\n</blockquote>');
       });
     return text;
   };
@@ -393,7 +388,7 @@ var showdown = (function() {
   var formParagraphs = function(text) {
     text = text.replace(/^\n+/g, '');
     text = text.replace(/\n+$/g, '');
-    var out = [], str, i, l,
+    var cap, out = [], str, i, l,
         grafs = text.split(/\n{2,}/g);
     for (i = 0, l = grafs.length; i < l; i++) {
       str = grafs[i];
@@ -402,8 +397,9 @@ var showdown = (function() {
       } else if (/\S/.test(str)) {
         str = runSpanGamut(str);
         
-        if (githubify) {
-          str = str.replace(/\n/g, '<br/>');  // ** GFM **
+        if (options.gfm) {
+          // ** GFM **
+          str = str.replace(/\n/g, '<br/>');  
         }
         
         str = str.replace(/^([ \t]*)/g, '<p>');
@@ -412,8 +408,8 @@ var showdown = (function() {
       }
     }
     for (i = 0, l = out.length; i < l; i++) {
-      while (/~K(\d+)K/.test(out[i])) {
-        str = __blocks[RegExp.$1];
+      while (cap = out[i].match(/~K(\d+)K/)) {
+        str = __blocks[cap[1]];
         str = str.replace(/\$/g, '$$$$'); 
         out[i] = out[i].replace(/~K\d+K/, str);
       }
@@ -428,8 +424,8 @@ var showdown = (function() {
   };
   
   var encodeBackslashEscapes = (function() { 
-    var callback = function($0, $1) {
-      var charCodeToEscape = $1.charCodeAt(0);
+    var callback = function(__, ch) {
+      var charCodeToEscape = ch.charCodeAt(0);
       return '~E' + charCodeToEscape + 'E';
     };
     return function(text) {
@@ -441,60 +437,57 @@ var showdown = (function() {
   
   var doAutoLinks = function(text) {
     text = text.replace(
-      /<((https?|ftp|dict):[^''>\s]+)>/gi, 
-      '<a href="$1">$1</a>'
+      /<((https?|ftp|dict):[^'">\s]+)>/gi,
+      function(__, href, protocol) { 
+        var out = '<a href="' + href + '"';
+        // my addition, adds rel-external 
+        // to external links
+        if (!~protocol.indexOf('http') || ~href.indexOf('//')) {
+          out += ' rel="external"'
+        }
+        return out + '>' + href + '</a>';
+      }
     );
     text = text.replace(
       /<(?:mailto:)?([-.\w]+\@[-a-z0-9]+(\.[-a-z0-9]+)*\.[a-z]+)>/gi,
-      function($0, $1) {
-        return encodeEmailAddress(unescapeSpecialChars($1));
+      function(__, addr) {
+        return encodeEmailAddress(unescapeSpecialChars(addr));
       }
     );
     return text;
   };
   
   var encodeEmailAddress = (function() {
-    var encode = [
-      function(ch) { 
-        return '&#' + ch.charCodeAt(0) + ';'; 
-      },
-      function(ch) { 
-        ch = ch.charCodeAt(0).toString(16);
-        if (ch.length % 2 !== 0) {
-          ch = '0' + '' + ch;
-        }
-        return '&#x' + ch + ';'; 
-      },
-      function(ch) { 
-        return ch; 
+    var hex = function(ch) { 
+      return '&#' + ch.charCodeAt(0) + ';'; 
+    };
+    var dec = function(ch) { 
+      ch = ch.charCodeAt(0).toString(16);
+      if (ch.length % 2 !== 0) {
+        ch = '0' + '' + ch;
       }
-    ];
+      return '&#x' + ch + ';'; 
+    };
     return function(addr) {
       addr = 'mailto:' + addr;
       addr = addr.replace(/./g, function(ch) {
+        var r = Math.random();
         if (ch === '@') {
-          ch = encode[Math.floor(Math.random() * 2)](ch);
+          ch = r > .5 ? hex(ch) : dec(ch);
         } else if (ch !== ':') {
-          var r = Math.random();
-          ch = (
-            r > .9 
-              ? encode[2](ch)   
-              : r > .45 
-                ? encode[1](ch) 
-                : encode[0](ch)
-          );
+          ch = r > .9 ? ch 
+            : (r > .45 ? dec(ch) : hex(ch));
         }
         return ch;
       });
-      addr = '<a href="' + addr + '">' + addr + '</a>';
-      addr = addr.replace(/'>.+:/g, '">'); 
+      addr = '<a href="' + addr + '">' + addr.split(':')[1] + '</a>';
       return addr;
     };
   })();
   
   var unescapeSpecialChars = function(text) {
-    text = text.replace(/~E(\d+)E/g, function($0, $1) {
-      return String.fromCharCode(+$1);
+    text = text.replace(/~E(\d+)E/g, function(__, code) {
+      return String.fromCharCode(+code);
     });
     return text;
   };
@@ -508,8 +501,8 @@ var showdown = (function() {
   var detab = function(text) {
     text = text.replace(/\t(?=\t)/g, '    '); 
     text = text.replace(/\t/g, '~A~B');
-    text = text.replace(/~B(.+?)~A/g, function($0, $1, $2) {
-      var lead = $1, numSpaces = 4 - lead.length % 4; 
+    text = text.replace(/~B(.+?)~A/g, function(__, lead) {
+      var numSpaces = 4 - lead.length % 4; 
       lead += Array(numSpaces + 1).join(' ');
       return lead;
     });
@@ -519,7 +512,7 @@ var showdown = (function() {
   };
   
   var escapeCharacters = function(text, charsToEscape, afterBackslash) {
-    var regexString = '([' + charsToEscape.replace(/([\[\]\\])/g,'\\$1') + '])';
+    var regexString = '([' + charsToEscape.replace(/([\[\]\\])/g, '\\$1') + '])';
     if (afterBackslash) {
       regexString = '\\\\' + regexString;
     }
@@ -532,17 +525,15 @@ var showdown = (function() {
   };
   
   return function(text, opt) {
-    opt || (opt = {});
-    if (opt === true) {
-      opt = { gfm: true };
+    options = opt || {};
+    if (options === true) {
+      options = { gfm: true };
     }
     
     __urls = [];
     __titles = [];
     __blocks = [];
     __level = 0;
-    
-    githubify = !!opt.gfm;
     
     text = text.replace(/~/g, '~T');
     text = text.replace(/\$/g, '~D');

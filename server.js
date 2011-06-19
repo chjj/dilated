@@ -8,17 +8,20 @@ app.configure(function() {
   config.content = config.content.replace(/^\./, __dirname);
   config.root = __dirname;
   
+  app.set('root', __dirname);
   app.set('views', __dirname + '/view');
   app.set('engine', './liquor'); 
 });
 
-// ========== DEVELOPMENT ========== //
+// ========== MIDDLEWARE ========== //
 app.configure('development', function() {
   app.use(vanilla.responseTime());
-  app.stack.unshift(app.stack.pop());
 });
 
-// ========== MIDDLEWARE ========== //
+app.configure('production', function() {
+  app.use(vanilla.log(__dirname + '/http.log'));
+});
+
 app.configure(function() {
   var Post = require('./src/post'),
       Pingback = require('./deps/pingback'),
@@ -164,6 +167,6 @@ if (!module.parent) {
 app.configure('production', function() {
   process.on('uncaughtException', function on(err) {
     err = err.stack || err + '';
-    console.error(i + ' - ' + new Date().toISOString() + ': ' + err);
+    console.error(new Date().toISOString() + ': ' + err);
   });
 });

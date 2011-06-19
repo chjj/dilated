@@ -82,4 +82,10 @@ liquor.render([
     && module
 });
 
+// shim for the client-side
+if (!Object.keys) Object.keys = function(o) { 
+  var k, c = []; if (o) for (k in o) if (c.hasOwnProperty.call(o, k)) c.push(k); 
+  return c; 
+};
+
 }).call(this);

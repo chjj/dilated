@@ -68,15 +68,6 @@ Application.prototype.init = function(func) {
     env: NODE_ENV
   };
   this.handle = handler(this);
-  // should move this down to handle
-  this.use(function(req, res, next) {
-    req.res = res;
-    res.req = req;
-    req.app = res.app = self;
-    req.next = res.next = next;
-    parsePath(req);
-    next();
-  });
   func.forEach(this.use.bind(this));
   this.__defineGetter__('router', function _() {
     if (!_.router) _.router = vanilla.router(self);
@@ -116,19 +107,15 @@ Application.prototype.mount = function(route, child) {
   }
   child.parent = this;
   child.route = route;
-  if (child.settings) {
-    child.settings.__proto__ = this.settings;
-  }
   this.use(function(req, res, next) {
     var ch = req.url[route.length];
     if (req.url.indexOf(route) === 0 && (!ch || ch === '/')) {
-      req.app = res.app = child;
       req.url = req.url.slice(route.length);
       if (req.url[0] !== '/') req.url = '/' + req.url;
-      parsePath(req);
       // use emit to allow regular http servers to be mounted
       child.emit('request', req, res, function(err) {
-        req.app = res.app = child.parent; 
+        req.app = res.app = child.parent;
+        req.next = res.next = next;
         req.url = join(route, req.url);
         parsePath(req);
         next(err);
@@ -137,27 +124,30 @@ Application.prototype.mount = function(route, child) {
       next();
     }
   });
+  if (child.settings) {
+    child.settings.__proto__ = this.settings;
+  }
 };
 
 // vhosting, examine the host header
 Application.prototype.vhost = function(host, child) {
   child.parent = this;
   child.host = host;
-  if (child.settings) {
-    child.settings.__proto__ = this.settings;
-  }
   this.use(function(req, res, next) {
     var host = req.headers.host;
     if (host && host.split(':')[0] === child.host) {
-      req.app = res.app = child;
       child.emit('request', req, res, function(err) {
         req.app = res.app = child.parent;
+        req.next = res.next = next;
         next(err);
       });
     } else {
       next();
     }
   });
+  if (child.settings) {
+    child.settings.__proto__ = this.settings;
+  }
 };
 
 // the same model as connect for code portability.
@@ -169,8 +159,17 @@ Application.prototype.vhost = function(host, child) {
 var handler = function(app) {
   var stack = app.stack;
   return function(req, res, out) {
+    // initialize
+    req.res = res;
+    res.req = req;
+    req.app = res.app = app;
+    req.next = res.next = next;
+    
+    // parse the path - very important
+    parsePath(req);
+    
     var i = 0; 
-    (function next(err) {
+    function next(err) {
       var func = stack[i++];
       if (!func) {
         if (out) return out(err); 
@@ -212,12 +211,14 @@ var handler = function(app) {
         } else if (len < 4) {
           func(req, res, next);
         } else {
-          next(); // skip over error handlers
+          // skip over error handlers
+          next(); 
         }
       } catch(e) {
         next(e);
       }
-    })();
+    }
+    next();
   };
 };
 
@@ -342,8 +343,9 @@ Response.prototype.send = function(data) {
   // jsonp and json
   var buff = Buffer.isBuffer(data);
   if (req.query.callback) {
-    res.contentType('application/javscript');
-    data = req.query.callback + '(' + JSON.stringify(data) + ');';
+    res.contentType('application/javascript');
+    data = req.query.callback 
+      + '(' + JSON.stringify(data) + ');';
   } 
   if (typeof data === 'object' && !buff) {
     res.contentType('application/json');
@@ -354,7 +356,9 @@ Response.prototype.send = function(data) {
   if (!res.header('Content-Type')) {
     res.contentType('text/html');
   }
-  res.header('Content-Length', buff ? data.length : Buffer.byteLength(data));
+  res.header('Content-Length', buff ? data.length 
+    : Buffer.byteLength(data)
+  );
   res.header('Content-Language', app.settings.lang);
   res.header('X-UA-Compatible', 'IE=Edge,chrome=1');
   
@@ -395,7 +399,7 @@ Response.prototype.sendfile = function(file, next) {
       return next(500); 
     }
     
-    var entity = stat.mtime.getTime().toString(16) + stat.size;
+    var entity = stat.mtime.getTime() + ':' + stat.size;
     res.setHeader('ETag', entity);
     
     if (app.settings.env !== 'development') {
@@ -425,8 +429,8 @@ Response.prototype.sendfile = function(file, next) {
         }
       })();
       res.statusCode = range ? 206 : 416;
-      res.setHeader('Content-Range', 'bytes ' + 
-        (range ? range.start + '-' + range.end : '*') 
+      res.setHeader('Content-Range', 'bytes ' 
+        + (range ? range.start + '-' + range.end : '*') 
         + '/' + stat.size
       );
     }
@@ -462,7 +466,7 @@ Request.prototype.header = function(key) {
   if (name === 'referer' || name === 'referrer') {
     return head.referer || head.referrer 
       || 'http' + (this.socket.encrypted ? 's' : '') 
-         + '://' + this.headers.host + '/';
+        + '://' + (head.host || this.app.host) + '/';
   }
   return head[name] || '';
 };
@@ -580,13 +584,16 @@ Application.prototype.partial = function(name, locals) {
 
 // ========== MIDDLEWARE ========== //
 var parsePath = function(req) {
-  var uri = parse(req.url), pathname = uri.pathname;
+  var uri = parse(req.url), 
+      pathname = uri.pathname;
   if (pathname[pathname.length-1] === '/') {
     pathname = pathname.slice(0, -1);
   }
   req.path = (function() {
     var path = pathname;
-    if (path[0] === '/') path = path.slice(1);
+    if (path[0] === '/') {
+      path = path.slice(1);
+    }
     path = path.split('/');
     if (!path[0]) return [];
     return path.map(function(v) {
@@ -599,13 +606,6 @@ var parsePath = function(req) {
     req.url = req.url.replace(/^([^:\/]+)?\/\/[^\/]+/, '') || '/';
   }
   req.query || (req.query = uri.query ? qs.parse(uri.query) : {});
-};
-
-vanilla.pathParser = function() {
-  return function(req, res, next) {
-    parsePath(req);
-    next();
-  };
 };
 
 vanilla.router = function(app) {
@@ -627,7 +627,9 @@ vanilla.router = function(app) {
   
   var add = function(route, method, handler) {
     if (Array.isArray(handler)) {
-      return handler.forEach(function(h) { add(route, method, h); });
+      return handler.forEach(function(h) { 
+        add(route, method, h); 
+      });
     }
     if (method === 'all') {
       var i = methods.length;
@@ -645,9 +647,7 @@ vanilla.router = function(app) {
     (function next(err) {
       if (err) return out(err); 
       var handler = stack[i++];
-      if (!handler) {
-        return out(); 
-      }
+      if (!handler) return out();
       var route = handler.route;
       if (route === '*' || route === pathname || route === path) {
         try {
@@ -663,14 +663,13 @@ vanilla.router = function(app) {
 };
 
 vanilla.static = function(opt) {
-  var dir = opt.path || opt;
-  var list = fs.readdirSync(dir);
+  var path = opt.path || opt;
+  var list = fs.readdirSync(path);
   return function(req, res, next) {
     if (req.method !== 'GET' 
       && req.method !== 'HEAD') return next();
     if (!~list.indexOf(req.path[0])) return next();
-    var file = path.join(dir, req.pathname);
-    res.sendfile(file, next);
+    res.sendfile(join(path, req.pathname), next);
   };
 };
 
@@ -698,7 +697,7 @@ vanilla.cookieParser = function() {
     if (req.cookies) return next();
     req.cookies = {};
     if (req.headers.cookie) {
-      try { // maybe remove try/catch
+      try { 
         var cookies = req.headers.cookie;
         if (typeof cookies !== 'string') {
           cookies = cookies.join(';');
@@ -770,9 +769,11 @@ vanilla.methodOverride = function() {
 
 vanilla.responseTime = function() {
   return function(req, res, next) {
-    if (/favicon\.ico/i.test(req.url)) {
+    if (req.pathname.toLowerCase() === '/favicon.ico') {
       return next();
     }
+    if (res._timed) return next();
+    res._timed = true;
     var end = res.end, start = Date.now();
     res.end = function() {
       res.end = end;
@@ -781,6 +782,59 @@ vanilla.responseTime = function() {
         (Date.now() - start), req.method, req.url
       );
       return ret;
+    };
+    next();
+  };
+};
+
+// a simple logger
+vanilla.log = function(opt) {
+  opt || (opt = {});
+  if (typeof opt === 'string') {
+    opt = { path: opt };
+  }
+  
+  if (NODE_ENV !== 'development') {
+    var out = [], written = 0, // or stream.bytesWritten
+        path = opt.path || '/tmp/http.log',
+        limit = opt.limit || 20 * 1024 * 1024,
+        log = opt.stream || fs.createWriteStream(path);
+    var push = function(data) {
+      if (written > limit) return;
+      var len = out.push(data);
+      written += data.length;
+      if (len >= 20) {
+        log.write(out.join('\n') + '\n');
+        out = [];
+      }
+    };
+  } else {
+    var push = function(data) {
+      console.log(data);
+    };
+  }
+  
+  return function(req, res, next) {
+    if (req.pathname.toLowerCase() === '/favicon.ico') {
+      return next();
+    }
+    if (req._logged) return next();
+    req._logged = true;
+    var start = Date.now(),
+        head = req.headers;
+    var writeHead = res.writeHead;
+    res.writeHead = function(code) {
+      res.writeHead = writeHead;
+      push(
+        req.method + ' "' + req.url + '"'
+        + ' from [' + req.socket.remoteAddress + ']'
+        + ' at [' + (new Date()).toISOString() + ']' 
+        + ' -> ' + (code || res.statusCode) 
+        + ' (' + (Date.now() - start) + 'ms)' + '\n'
+        + '  Referrer: ' + (head.referrer || head.referer || 'None') + '\n'
+        //+ '  User-Agent: ' + (head['user-agent'] || 'Unknown') + ')' + '\n'
+      );
+      return writeHead.apply(res, arguments);
     };
     next();
   };
@@ -831,56 +885,69 @@ vanilla.session = function(opt) {
   
   // maybe swap ciphers and hmacs for better security
   var stringify = function(data, flag) {
-    if (!data) return;
-    var time = Date.now().toString(36);
-    
-    data = JSON.stringify(data);
-    flag = flag || time;
-    
-    // hack to get around the base64 bug
-    var ci = crypto.createCipher('bf-cbc', secret);
-    data = new Buffer(
-      ci.update(data, 'utf-8', 'binary') 
-      + ci.final('binary'), 'binary'
-    ).toString('base64');
-    
-    // would normally need to qs.escape, but 
-    // res.cookie takes care of this
-    data = [hmac(data + flag), data, time].join(':');
-    
-    // http://tools.ietf.org/html/rfc6265#page-27
-    if (Buffer.byteLength(data) <= 4096) {
-      return data;
+    if (!data) data = {};
+    try {
+      var time = Date.now().toString(36);
+      
+      data = JSON.stringify(data);
+      flag = flag || time;
+      
+      // hack to get around the base64 bug
+      var ci = crypto.createCipher('bf-cbc', secret);
+      data = new Buffer(
+        ci.update(data, 'utf-8', 'binary') 
+        + ci.final('binary'), 'binary'
+      ).toString('base64');
+      
+      // would normally need to qs.escape, but 
+      // res.cookie takes care of this
+      data = [hmac(data + flag), data, time].join(':');
+      
+      // http://tools.ietf.org/html/rfc6265#page-27
+      if (Buffer.byteLength(data) <= 4096) {
+        return data;
+      }
+    } finally {
+      return stringify({}, flag);
     }
   };
   
   var parse = function(cookie, flag) {
-    if (!cookie) return;
-    var s = cookie.split(':'), 
-        mac = s[0], 
-        data = s[1], 
-        time = s[2];
-    
-    flag = flag || time;
-    
-    if (mac === hmac(data + flag) && (parseInt(time, 36) > Date.now() - life)) {
-      var dec = crypto.createDecipher('bf-cbc', secret);
-      data = dec.update(data, 'base64', 'utf-8') + dec.final('utf-8');
-      return JSON.parse(data);
+    if (!cookie) return {};
+    try {
+      var s = cookie.split(':'), 
+          mac = s[0], 
+          data = s[1], 
+          time = s[2];
+      
+      flag = flag || time;
+      time = parseInt(time, 36);
+      
+      if (mac === hmac(data + flag) && time > (Date.now() - life)) {
+        var dec = crypto.createDecipher('bf-cbc', secret);
+        data = dec.update(data, 'base64', 'utf-8') + dec.final('utf-8');
+        return JSON.parse(data);
+      }
+    } finally {
+      return {};
     }
   };
   
   return function(req, res, next) {
     if (req.session) return next();
     var ip = req.socket.remoteAddress;
-    req.session = parse(req.cookies.sess, ip) || {};
+    req.session = parse(req.cookies.session, ip);
     var writeHead = res.writeHead;
     res.writeHead = function() {
-      var data = stringify(req.session, ip);
-      if (data) {
-        res.cookie('sess', data, { maxAge: life, httpOnly: true });
-      }
       res.writeHead = writeHead;
+      if (req.session) {
+        var data = stringify(req.session, ip);
+        res.cookie('session', data, { 
+          maxAge: life, httpOnly: true 
+        });
+      } else {
+        res.clearCookie('session'); 
+      }
       return writeHead.apply(res, arguments);
     };
     next();

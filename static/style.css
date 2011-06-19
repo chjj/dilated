@@ -473,6 +473,10 @@ body > header + * > footer > a[href]:before {
   text-shadow: rgba(255, 255, 255, 0.75) 1px 1px 1px; 
 }
 
+
+/* testing ----------------- */
+/*pre { background: rgba(255, 255, 255, 0.7); box-shadow: #333 0px 0px 6px; }*/
+
 }
 
 /* ===== MEDIA QUERIES ===== */
