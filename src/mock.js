@@ -1,8 +1,10 @@
 // generate mock data
 
 var ipsum = function(num) {
-  var lorem = _lorem.sort(function() { return Math.random() > .5 ? -1 : 1; });
-  var words = [], i = lorem.length;
+  var lorem = _lorem.sort(function() { return Math.random() > .5 ? -1 : 1; })
+    , words = []
+    , i = lorem.length;
+
   if (num) {
     while (i-- && words.length < num) {
       if (Math.random() > .5) words.push(lorem[i]);
@@ -13,28 +15,28 @@ var ipsum = function(num) {
       if (Math.random() > .99) words.push('\n\n');
     }
   }
+
   return words.sort(function() {
     return Math.random() > .5 ? -1 : 1;
   }).join(' ')
-    //.replace(/\s+\./g, '.')
     .replace(/\n{3,}/g, '\n\n')
-    .replace(/\n\x20|\x20\n/g, '\n')
+    .replace(/\n | \n/g, '\n')
     .replace(/(\w)(?=\n|$)/g, '$1.')
-    .replace(/(^|\n)\w/g, function(s) { 
-      return s.toUpperCase(); 
+    .replace(/(^|\n)\w/g, function(s) {
+      return s.toUpperCase();
     });
 };
 
 var rand = function(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min; 
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
 var tag = function() {
-  var out = [], 
-      i = _tags.length, 
-      num = rand(1, 5),
-      tags = _tags.sort(function() { 
-        return Math.random() > .5 ? -1 : 1; 
+  var out = []
+    , i = _tags.length
+    , num = rand(1, 5)
+    , tags = _tags.sort(function() {
+        return Math.random() > .5 ? -1 : 1;
       });
   while (out.length < num) {
     out.push(tags[--i]);
@@ -45,17 +47,17 @@ var tag = function() {
 module.exports = function(fs, dir, ext) {
   for (var i = 10, id, title, date; i--;) {
     title = ipsum(3).replace('.', '')
-      .replace(/(^|\s)\w/g, function(s) { 
-        return s.toUpperCase(); 
+      .replace(/(^|\s)\w/g, function(s) {
+        return s.toUpperCase();
       });
     id = title.toLowerCase().replace(/\s+/g, '_');
     date = (new Date(Date.now() - (Math.random() * (1000 * 60 * 60 * 24 * 7 * 10))));
     fs.writeFileSync(
       dir + '/' + id + ext,
-      JSON.stringify({ 
-        title: title, 
+      JSON.stringify({
+        title: title,
         timestamp: date.toISOString(),
-        tags: tag(), 
+        tags: tag(),
       }, null, 2) + '\n\n'
       + ipsum()
     );

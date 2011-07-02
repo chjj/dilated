@@ -24,7 +24,7 @@ exports.login = function(req, res, next) {
     return next({code: 403, msg: 'Bad password.'});
   }
   res.cookie('user', config.pass, {
-    maxAge: 30 * 24 * 60 * 60 * 1000, 
+    maxAge: 30 * 24 * 60 * 60 * 1000,
     httpOnly: true
   });
   res.redirect('/admin');

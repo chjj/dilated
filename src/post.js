@@ -2,16 +2,16 @@
 // where all the data management happens
 // every function here is defined in
 // async style, even when unecessary.
-// this is to make it forwardly 
-// compatible with a database 
+// this is to make it forwardly
+// compatible with a database
 // if need be.
 
-var fs = require('fs'),
-    path = require('path');
+var fs = require('fs')
+  , path = require('path');
 
 // post file extension
-var extension = '.md', 
-    content_dir; 
+var extension = '.md'
+  , content_dir;
 
 // __meta stores the metadata for all articles
 // in-memory, so its easy to sort and query
@@ -49,18 +49,18 @@ Post.prototype.merge = function(obj) {
 // and save the changes to the actual file
 // also ensure the __meta is in sync no matter what
 Post.get = function(id, func, tag) {
-  fs.readFile(Post.getPath(id), 'utf-8', function(err, data) {
+  fs.readFile(Post.getPath(id), 'utf8', function(err, data) {
     if (err) {
-      if (err.code === 'ENOENT' && __meta[id]) { 
+      if (err.code === 'ENOENT' && __meta[id]) {
         // post was probably deleted manually
         // make sure the __meta gets updated to reflect this
-        return Post.remove(id, function() { 
-          func(err); 
+        return Post.remove(id, function() {
+          func(err);
         });
       }
       return func(err);
     }
-    
+
     try {
       data = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       data = data.match(/^([\s\S]+?)\n\n([\s\S]+)$/).slice(1);
@@ -71,29 +71,29 @@ Post.get = function(id, func, tag) {
     } catch(e) {
       return func(e);
     }
-    
+
     // make sure the times are ms for comparisons
-    data.timestamp = mstime(data.timestamp); 
-    
-    // if there was no data.updated time, 
+    data.timestamp = mstime(data.timestamp);
+
+    // if there was no data.updated time,
     // this post is either new, or the author wanted
     // to have the "updated" timestamp automatically bumped
-    if (!data.updated) { 
+    if (!data.updated) {
       data.updated = Date.now();
-      
-      // we need to update the post file since 
-      // we gave the post an updated time and 
-      // potentially a timestamp, updatePost 
+
+      // we need to update the post file since
+      // we gave the post an updated time and
+      // potentially a timestamp, updatePost
       // implicitly calls sync
       Post.update(id, data, render);
     } else {
       data.updated = mstime(data.updated);
-      
+
       // sync the post to __meta with potentially new data
       _sync(data);
-      render(); 
+      render();
     }
-    
+
     function render() {
       var post = new Post(data);
       post.getAdjacent(function(err, obj) {
@@ -124,31 +124,31 @@ Post.update = function(id, post, func) {
   } else {
     post.id = id;
   }
-  
+
   if (post.content == null) {
     return func(new Error('No content.'));
   }
-  
+
   // touch the post
-  post.updated = Date.now(); 
-  
+  post.updated = Date.now();
+
   // stringify and filter out stuff we dont
   // want in the actual file
   var out = JSON.stringify(post, function(key, val) {
     if (key === 'content' || key === 'id') {
       return;
-    } 
+    }
     if (key === 'timestamp' || key === 'updated') {
       return isotime(val);
     }
     return val;
   }, 2);
-  
+
   out += '\n\n' + post.content;
-  
+
   // write to file and update the __meta to reflect the changes
   fs.writeFile(Post.getPath(id), out, function() {
-    _sync(post); 
+    _sync(post);
     if (func) func();
   });
 };
@@ -160,8 +160,8 @@ Post.prototype.update = function(func) {
 // delete a post, including its data directory
 // should probably recursively delete the directory(/ies)
 Post.remove = function(post, func) {
-  var id = post.id || post, 
-      stale = __meta[id];
+  var id = post.id || post
+    , stale = __meta[id];
   if (stale) {
     if (stale.tags) {
       stale.tags.forEach(_removeTag);
@@ -182,8 +182,8 @@ Post.remove = function(post, func) {
         });
       });
       function done() {
-        fs.unlink(dir, function() { 
-          if (func) func(); 
+        fs.unlink(dir, function() {
+          if (func) func();
         });
       }
     });
@@ -197,11 +197,11 @@ Post.prototype.remove = function(func) {
 // make sure the __meta is in sync with a post
 var _sync = function(post) {
   var stale = __meta[post.id];
-  if (!stale || stale.updated !== post.updated) { 
+  if (!stale || stale.updated !== post.updated) {
     if (stale) {
       // not ideal, but it works for now
       [].concat(
-        post.tags || [], 
+        post.tags || [],
         stale.tags || []
       ).forEach(function(tag) {
         if (!~stale.tags.indexOf(tag)) _addTag(tag);
@@ -211,8 +211,11 @@ var _sync = function(post) {
       post.tags.forEach(_addTag);
     }
     _updateTags();
-    
-    var key, k = Object.keys(post), i = k.length;
+
+    var key
+      , k = Object.keys(post)
+      , i = k.length;
+
     stale = __meta[post.id] = {};
     while (i--) {
       key = k[i];
@@ -231,9 +234,12 @@ Post.prototype.sync = function() {
 // get the adjacent posts timestamp-wise
 // used for "prev" and "next" links
 Post.getAdjacent = function(post, func, tag) {
-  var id = post.id || post, list = ascending(__meta), 
-      i = list.length, before, after;
+  var id = post.id || post
+    , list = ascending(__meta)
+    , i = list.length, before, after;
+
   while (i-- && list[i].id !== id);
+
   if (tag) {
     before = (function() {
       var k = i, post;
@@ -265,16 +271,17 @@ Post.prototype.getAdjacent = function(func, tag) {
 // set arbitrary data that doesnt pollute the main file
 // meant for small pieces of data
 Post.store = function(post, key, val, func) {
-  var id = post.id || post, 
-      dir = Post.getAssetPath(id); 
+  var id = post.id || post
+    , dir = Post.getAssetPath(id);
+
   Post.retrieve(id, key, function(err, data) {
     if (err) return func(err);
     data[key] = val;
     path.exists(dir, function(exists) {
       if (!exists) fs.mkdirSync(dir, 0666);
       fs.writeFile(
-        Post.getAssetPath(id, 'data.json'), 
-        JSON.stringify(data), 
+        Post.getAssetPath(id, 'data.json'),
+        JSON.stringify(data),
         function(err) { func(err); }
       );
     });
@@ -288,9 +295,11 @@ Post.prototype.store = function(key, val, func) {
 
 Post.retrieve = function(post, key, func) {
   if (post._data) return func(null, post._data);
-  var id = post.id || post, 
-      file = Post.getAssetPath(id, 'data.json'); 
-  fs.readFile(file, 'utf-8', function(err, data) {
+
+  var id = post.id || post
+    , file = Post.getAssetPath(id, 'data.json');
+
+  fs.readFile(file, 'utf8', function(err, data) {
     if (err) return func(err);
     try {
       data = JSON.parse(data);
@@ -298,8 +307,8 @@ Post.retrieve = function(post, key, func) {
       return func(e);
     }
     if (post.id) { // cache
-      Object.defineProperty(post, '_data', { 
-        value: data 
+      Object.defineProperty(post, '_data', {
+        value: data
       });
     }
     func(null, data);
@@ -333,7 +342,8 @@ Post.getLatest = function(num, func) {
 
 // get the last post
 Post.getLast = function(func, tag) {
-  var list = tag ? Post.getByTag(tag) : descending(__meta);
+  var list = tag ? Post.getByTag(tag) 
+                 : descending(__meta);
   var latest = list.shift();
   if (!latest || !latest.id) {
     return func(new Error('No posts.'));
@@ -343,20 +353,29 @@ Post.getLast = function(func, tag) {
 
 // descending
 Post.getByTag = function(tag, func) {
-  var items = [], list = ascending(__meta), i = list.length;
+  var items = []
+    , list = ascending(__meta)
+    , i = list.length;
+
   while (i--) {
     if (list[i].tags && ~list[i].tags.indexOf(tag)) {
       items.push(list[i]);
     }
   }
+
   return func ? func(null, items) : items;
 };
 
 // search every posts metadata for a string
 // check the tags and the title
 Post.search = function(search, func) {
-  var items = [], k, post, tags, str;
+  var items = [], k
+    , post
+    , tags
+    , str;
+
   search = search.toLowerCase();
+
   for (k in __meta) {
     post = __meta[k],
     tags = post.tags ? post.tags.join(' ') : '',
@@ -365,6 +384,7 @@ Post.search = function(search, func) {
       items.push(post);
     }
   }
+
   if (!items.length) {
     func(new Error('No posts found.'));
   } else {
@@ -393,17 +413,19 @@ Post.asc = function(func) {
 
 // get a collection of posts by time range
 Post.range = function(range, func, count) {
-  var items = [],
-      start = range.start, 
-      end = range.end,
-      list = ascending(__meta),
-      i = list.length, t;
+  var items = []
+    , start = range.start
+    , end = range.end
+    , list = ascending(__meta)
+    , i = list.length, t;
+
   while (i--) {
     t = list[i].timestamp;
     if (t >= start && t < end) {
       items.push(list[i]);
     }
   }
+
   if (!items.length) {
     func(new Error('No items.'));
   } else {
@@ -412,7 +434,7 @@ Post.range = function(range, func, count) {
 };
 
 // ========== FILE MANAGEMENT ========== //
-// all the lower level data management 
+// all the lower level data management
 content_dir = config.content;
 
 if (!path.existsSync(content_dir)) {
@@ -420,13 +442,17 @@ if (!path.existsSync(content_dir)) {
   require('./mock')(fs, content_dir, extension);
 }
 
-// get the header of a post - with this 
-// function we can grab and parse the header 
+// get the header of a post - with this
+// function we can grab and parse the header
 // of 6000+ files in under half a second !
 // used for building and managing the __meta
-var postHeader = function(file, func) {
-  var data = new Buffer(256);
-  var str = '', i, pos = 0, num = 0;
+var header = function(file, func) {
+  var data = new Buffer(256)
+    , str = ''
+    , i
+    , pos = 0
+    , num = 0;
+
   fs.open(file, 'r', 0666, function(err, fd) {
     if (err) return func(err);
     (function read(done) {
@@ -445,13 +471,13 @@ var postHeader = function(file, func) {
           }
         }
         pos += bytes;
-        str += data.toString('utf-8');
+        str += data.toString('utf8');
         read(done);
       });
     })(function(err) {
       fs.close(fd, function() {
         try {
-          data = JSON.parse(str + data.slice(0, i).toString('utf-8')); 
+          data = JSON.parse(str + data.slice(0, i).toString('utf8'));
         } catch(e) {
           return func(e);
         }
@@ -480,13 +506,13 @@ var _updateTags = function() {
 // unindexed files every 5 min
 // this is also what initially loads the __meta
 (function() {
-  // check for unindexed posts, index 
+  // check for unindexed posts, index
   // them and parse the header data
   var poll = function() {
     fs.readdir(content_dir, function(err, list) {
       if (err) return;
       var len = list.length;
-      list.forEach(function(file) { 
+      list.forEach(function(file) {
         var pos = file.indexOf(extension), id;
         if (~pos) {
           id = file.slice(file.lastIndexOf('/') + 1, pos);
@@ -496,32 +522,32 @@ var _updateTags = function() {
         }
         // is the post unindexed?
         file = path.join(content_dir, file);
-        postHeader(file, function(err, data) {
+        header(file, function(err, data) {
           if (err || data.draft) {
             if (err) console.error('Unable to parse %s.', file);
             --len || done(list);
             return;
           }
-          
+
           data.id = id;
-          data.timestamp = mstime(data.timestamp); 
+          data.timestamp = mstime(data.timestamp);
           data.updated = data.updated ? mstime(data.updated) : Date.now();
-          
+
           __meta[id] = data; // index !
-          
+
           // update the tag index
-          // maybe make this its own 
+          // maybe make this its own
           // function for updating posts
-          if (data.tags) { 
+          if (data.tags) {
             data.tags.forEach(_addTag);
           }
-          
+
           --len || done(list);
         });
       });
     });
   };
-  
+
   var done = function(list) {
     // check for deleted posts
     // if the directory list length
@@ -537,14 +563,14 @@ var _updateTags = function() {
         }
       });
     }
-    
+
     // sort the tags by "popularity"
     _updateTags();
-    
+
     // poll again in 5 minutes
     setTimeout(poll, 5 * 60 * 1000);
   };
-  
+
   poll();
 })();
 
@@ -561,7 +587,7 @@ var ascending = function(obj, key) {
     })();
   }
   obj = obj.sort(function(a, b) {
-    a = a[key]; 
+    a = a[key];
     b = b[key];
     return a > b ? 1 : (a < b ? -1 : 0);
   });
@@ -587,9 +613,9 @@ var dateify = function(date) {
 };
 
 var isotime = function(dt) {
-  return dateify(dt).toISOString(); 
+  return dateify(dt).toISOString();
 };
 
 var mstime = function(dt) {
-  return dateify(dt).getTime(); 
+  return dateify(dt).getTime();
 };

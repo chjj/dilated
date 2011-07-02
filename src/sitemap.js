@@ -2,9 +2,9 @@ var Post = require('./post');
 
 module.exports = function(req, res, next) {
   if (res.cached(Post.updated)) return;
-  
-  res.contentType('.xml'); 
-  
+
+  res.contentType('.xml');
+
   Post.desc(function(err, posts) {
     if (err || !posts) return next(500);
     posts = posts.map(function(post) {

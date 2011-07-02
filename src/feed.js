@@ -1,17 +1,18 @@
-var utils = require('./utils'),
-    Post = require('./post');
+var utils = require('./utils')
+  , Post = require('./post');
 
 var tag = (function() {
-  var TAG_DESIGN = 'tag:%0,%1:%2'; 
+  var design = 'tag:%0,%1:%2';
   return function() {
     var args = arguments;
-    return TAG_DESIGN.replace(/%\d/g, function(s) { 
+    return design.replace(/%\d/g, function(s) {
       return args[s[1]];
     });
   };
 })();
 
-var cache, updated;
+var cache
+  , updated;
 
 module.exports = function(req, res, next) {
   if (res.cached(Post.updated)) return;
@@ -33,24 +34,24 @@ module.exports = function(req, res, next) {
 
 var build = function(req, res, posts) {
   posts = posts.map(function(post) {
-    var timestamp = new Date(post.timestamp),
-        update = (new Date(post.updated)).toISOString();
+    var timestamp = new Date(post.timestamp)
+      , update = new Date(post.updated).toISOString();
     return {
       title: utils.escapeHTML(post.title),
       href: '/' + post.id,
       id: tag(config.host, timestamp.getFullYear(), post.id),
-      published: timestamp.toISOString(), 
+      published: timestamp.toISOString(),
       updated: update,
       content: utils.markdown(post.content)
         // there are a few changes that need to occur within
-        // the algorithm for converting an html(5) document to 
+        // the algorithm for converting an html(5) document to
         // an atom feed, change h[x] to h[x-1] to fix the outline
-        .replace(/(<\/?h)([2-6])(?=[^>]*>)/gi, function($0, $1, $2) { 
-          return $1 + ($2 - 1); 
-        }) 
+        .replace(/(<\/?h)([2-6])(?=[^>]*>)/gi, function($0, $1, $2) {
+          return $1 + ($2 - 1);
+        })
     };
   });
-  
+
   res.locals({
     host: config.host,
     self: '/feed',
@@ -59,14 +60,14 @@ var build = function(req, res, posts) {
     id: tag(config.host, 2010, 'index'),
     entries: posts
   });
-  
-  // this file may get accessed more than 
-  // any other due to all the bots and feed 
-  // readers requesting it. it's reasonable 
+
+  // this file may get accessed more than
+  // any other due to all the bots and feed
+  // readers requesting it. it's reasonable
   // to cache the entire thing in a buffer
   // and hold it in memory.
   cache = new Buffer(res.show('feed.xml'));
   updated = Date.now();
-  
+
   res.send(cache);
 };
