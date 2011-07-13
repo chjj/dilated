@@ -1,4 +1,5 @@
 var crypto = require('crypto');
+
 var hash = function(str) {
   return crypto.createHash('sha256')
                .update(str).digest('hex');

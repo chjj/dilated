@@ -24,50 +24,49 @@
           + '|progress|section|summary|time|video)$', 
         'i');
 
-    // move any html5 elements out of the head:
-    // if the BODY/HEAD tags are omitted with html5 elements present, 
-    // IE doesn't know which elements to implicitly include in the 
-    // HEAD, so it ends up putting any bugged html5 start-tags there. 
-    // we need to move them into the BODY before we can fix things.
+    // move any html5 elements out of the head
     while (names.test(head.lastChild.nodeName)) {
       body.insertBefore(head.lastChild, body.firstChild);
     }
 
-    // mutable variables used during the walk
     var all = body.getElementsByTagName('*')
-      , i = 0, cur, el, attr, val, depth
-      , start, close, next;
+      , i = 0
+      , el;
 
-    // walk the dom tree and fix the structure accordingly
-    while (cur = all[i++]) {
-      if (names.test(cur.nodeName) && !cur.firstChild) {
+    // walk the dom tree and 
+    // fix the structure accordingly
+    while (el = all[i++]) {
+      if (names.test(el.nodeName) && !el.firstChild) {
         // turn all the bugged "start-tag" 
         // elements into their real counterparts
-        el = doc.createElement(cur.nodeName);
-        for (attr in cur.attributes) {
-          if (val = cur.getAttribute(attr)) {
-            el.setAttribute(attr, val);
-          }
+        var sub = doc.createElement(el.nodeName)
+          , attr = el.attributes
+          , l = attr.length;
+
+        while (l--) {
+          sub.setAttribute(attr[l].name, attr[l].value);
         }
-        cur.parentNode.replaceChild(el, cur);
+
+        el.parentNode.replaceChild(sub, el);
 
         // append all elements until the corresponding 
         // bugged "close-tag" element is found
-        start = el.nodeName, close = '/' + start, depth = 0;
-        while (next = el.nextSibling) {
+        var start = sub.nodeName
+          , close = '/' + start
+          , depth = 0
+          , next;
+
+        while (next = sub.nextSibling) {
           if (next.nodeName === start) {
             depth++;
           } else if (next.nodeName === close) {
             if (!depth--) break;
           }
-          el.appendChild(next);
+          sub.appendChild(next);
         }
 
         // get rid of the bugged "close-tag" element
-        // shouldnt need to check for a nextSibling if everything went 
-        // accordingly (there should always be a nextSibling),
-        // but it cant hurt to do just for good measure
-        if (el.nextSibling) el.parentNode.removeChild(el.nextSibling); 
+        if (sub.nextSibling) sub.parentNode.removeChild(sub.nextSibling); 
       }
     }
   };

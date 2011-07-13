@@ -25,8 +25,8 @@
 // as well as some other useful extras.
 
 var showdown = (function() {
-  var options;
-  var __urls
+  var options
+    , __urls
     , __titles
     , __blocks
     , __level;

@@ -1,5 +1,5 @@
-var utils = require('./utils');
-var Post = require('./post');
+var utils = require('./utils')
+  , Post = require('./post');
 
 var escapeHTML = utils.escapeHTML
   , prettyTime = utils.prettyTime
@@ -44,6 +44,7 @@ var get = function(req, res, params, func) {
   } else {
     Post.getLast(done, params.tag);
   }
+
   function done(err, post) {
     if (err) {
       return req.next(404);
@@ -94,12 +95,14 @@ var $GET = {
     if (!res.login) {
       return req.next(403);
     }
+
     post.merge({
       title: post.title && escapeHTML(post.title),
       tags: post.tags && post.tags.join(', '),
       timestamp: (new Date(post.timestamp)).toISOString(),
       content: escapeHTML(post.content).replace(/\r?\n/g, '&#x0A;')
     });
+
     res.render('form.html', {
       title: 'Edit Post',
       post: post,
@@ -120,16 +123,18 @@ var $GET = {
   },
   'view': function(req, res, params, post) {
     res.header('X-Pingback', 'http://' + config.host + '/pingback');
+
     if (req.pathname === '/') {
       res.local('rel').home = true;
     }
+
     res.render('post.html', {
       title: post.title,
       canonical: (!params.slug || params.tag) ? '/' + post.id : false,
       post: {
         title: post.title,
         permalink: '/' + post.id,
-        datetime: (new Date(post.timestamp)).toISOString(),
+        datetime: new Date(post.timestamp).toISOString(),
         timestamp: prettyTime(post.timestamp),
         content: markdown(post.content),
         tags: Post.buildTags(post.tags, params.tag),

@@ -3,7 +3,7 @@
 var vanilla = require('./deps/vanilla')
   , app = vanilla.createServer();
 
-// ========== SETTINGS ========== //
+// # settings
 app.configure(function() {
   var read = require('fs').readFileSync;
   
@@ -16,7 +16,7 @@ app.configure(function() {
   app.set('engine', './liquor');
 });
 
-// ========== MIDDLEWARE ========== //
+// # middleware
 app.configure('development', function() {
   app.use(vanilla.responseTime());
 });
@@ -110,6 +110,7 @@ app.configure(function() {
 
     var code = res.statusCode = +err.code || 500;
     if (!STATUS_CODES[code]) code = 500;
+
     var status = code + ': ' + STATUS_CODES[code];
 
     // clear headers - hack
@@ -125,9 +126,10 @@ app.configure(function() {
   });
 });
 
-// ========== ROUTES ========== //
+// # routes
 app.configure(function() {
   var dev = app.settings.env === 'development';
+
   var admin = require('./src/admin')
     , browse = require('./src/browse')
     , feed = require('./src/feed')
@@ -158,6 +160,14 @@ app.configure(function() {
   app.post('*', article.post);
 });
 
+// log uncaught errors
+app.configure('production', function() {
+  process.on('uncaughtException', function(err) {
+    err = err.stack || err + '';
+    console.error(new Date().toISOString() + ': ' + err);
+  });
+});
+
 if (!module.parent) {
   app.configure('development', function() {
     app.listen(8080);
@@ -168,11 +178,3 @@ if (!module.parent) {
 } else {
   module.exports = app;
 }
-
-// log uncaught errors
-app.configure('production', function() {
-  process.on('uncaughtException', function on(err) {
-    err = err.stack || err + '';
-    console.error(new Date().toISOString() + ': ' + err);
-  });
-});

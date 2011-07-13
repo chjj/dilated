@@ -59,7 +59,7 @@ exports.prettyTime = function(time) {
 
   if (days < 31) {
     if (days === 1) {
-      return 'yesterday';
+      return 'Yesterday';
     }
     if (days < 14) {
       return days + ' days ago';
@@ -121,18 +121,21 @@ exports.prettyHTML = (function() {
       , cap
       , num = 0;
 
-    // temporarily remove elements before processing
+    // temporarily remove elements before 
+    // processing, also remove whitespace
     text = text.replace(
       /<(pre|textarea|title|p|li|a)(?:\s[^>]+)?>[\s\S]+?<\/\1>/g,
       function($0, $1) {
-      if ($1 === 'pre' || $1 === 'textarea') {
-        $0 = $0.replace(/\r?\n/g, '&#x0A;');
-      } else {
-        //$0 = $0.replace(/\s*[\r\n]+\s*/g, '');
-        $0 = $0.replace(/(<[^\/][^>]*>)\s+|\s+(<\/)/g, '$1$2').replace(/[\r\n]/g, '');
+        if ($1 === 'pre' || $1 === 'textarea') {
+          $0 = $0.replace(/\r?\n/g, '&#x0A;');
+        } else {
+          $0 = $0.replace(/(<[^\/][^>]*>)\s+|\s+(<\/)/g, '$1$2')
+                 .replace(/[\r\n]/g, '');
+        }
+        return '<!' + (place.push($0) - 1) 
+                    + (Array($0.length - 3).join('%')) + '/>';
       }
-      return '<!' + (place.push($0)-1) + (Array($0.length-3).join('%')) + '/>';
-    });
+    );
 
     // indent elements
     text = text.replace(/(>)\s+|\s+(<)/g, '$1$2').replace(/[\r\n]/g, '');
@@ -142,9 +145,9 @@ exports.prettyHTML = (function() {
       if (cap[1]) stack.push(indent(num) + cap[1]);
       if (tag[0] !== '/') {
         stack.push(indent(num) + '<' + cap[2] + '>');
-        if (!closing[tag] && tag[0] !== '!' && cap[2].slice(-1) !== '/') {
-          num++;
-        }
+        if (!closing[tag] 
+            && tag[0] !== '!' 
+            && cap[2][cap[2].length-1] !== '/') num++;
       } else {
         num--;
         stack.push(indent(num) + '<' + cap[2] + '>');
@@ -159,9 +162,11 @@ exports.prettyHTML = (function() {
 
     // wrap paragraphs
     text = text.replace(/([ \t]*)<p>([\s\S]+?)<\/p>/g, function($0, $1, $2) {
-      var indent = $1 + '  ', text = indent + $2;
+      var indent = $1 + '  '
+        , text = indent + $2;
 
-      text = text.replace(/[\t\r\n]+/g, '')
+      text = text
+        .replace(/[\t\r\n]+/g, '')
         .replace(/(<\/[^>]+>|\/>)(?=\s*<\w)/g, '$1\n' + indent)
         .replace(/(.{75,}?\s+(?![^<]+>))/g, '$1\n' + indent)
         .replace(/([^<>\n]{50,}?)(<[^<]{15,}>)/g, '$1\n' + indent + '$2');

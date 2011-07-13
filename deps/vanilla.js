@@ -17,7 +17,7 @@ var NODE_ENV = process.env.NODE_ENV
   || (~process.argv.indexOf('--test') && 'test')
   || 'production';
 
-// ========== BASE ========== //
+// # base
 var Application = function(func) {
   http.Server.call(this);
   this.init(func);
@@ -29,12 +29,14 @@ Application.prototype.__proto__ = http.Server.prototype;
 Application.__defineGetter__('https', function _() {
   if (!_.https) {
     var https = require('https');
+
     _.https = function(opt, func) {
       https.Server.call(this, opt);
       this._https = true;
       this.init(func);
     };
     _.https.prototype.__proto__ = https.Server.prototype;
+
     Object.keys(Application.prototype).forEach(function(key) {
       _.https.prototype[key] = Application.prototype[key];
     });
@@ -42,7 +44,7 @@ Application.__defineGetter__('https', function _() {
   return _.https;
 });
 
-// ========== vanilla ========== //
+// # vanilla
 var vanilla = function() {
   var args = slice.call(arguments);
   if (typeof args[0] === 'object') {
@@ -56,22 +58,26 @@ vanilla.__defineGetter__('HTTPSServer', function() {
   return Application.https;
 });
 
-// ========== APPLICATION ========== //
+// # application
 Application.prototype.init = function(func) {
   var self = this;
+
   this.stack = [];
   this.settings = {
     root: process.cwd(),
-    charset: 'utf8',
+    charset: 'utf-8',
     lang: 'en',
     env: NODE_ENV
   };
+
   this.handle = handler(this);
   func.forEach(this.use.bind(this));
+
   this.__defineGetter__('router', function _() {
     if (!_.router) _.router = vanilla.router(self);
     return _.router;
   });
+
   this.on('request', this.handle);
   this.on('listening', function() {
     var address = this.address();
@@ -97,7 +103,7 @@ Application.prototype.__defineGetter__('url', function() {
   return 'http'
     + (this._https ? 's' : '') + '://'
     + (this.settings.host || this.host)
-    + (this.port != 80 ? ':' + this.port : '');
+    + (this.port != 80 && this.port != 443 ? ':' + this.port : '');
 });
 
 Application.prototype.mount = function(route, child) {
@@ -110,7 +116,7 @@ Application.prototype.mount = function(route, child) {
     var ch = req.url[route.length];
     if (req.url.indexOf(route) === 0 
         && (!ch || ch === '/')) {
-      req.url = req.url.slice(route.length);
+      req.url = req.url.substring(route.length);
 
       if (req.url[0] !== '/') req.url = '/' + req.url;
 
@@ -161,6 +167,8 @@ Application.prototype.vhost = function(host, child) {
 var handler = function(app) {
   var stack = app.stack;
   return function(req, res, out) {
+    var i = 0;
+
     // initialize
     req.res = res;
     res.req = req;
@@ -170,26 +178,21 @@ var handler = function(app) {
     // parse the path
     parsePath(req);
 
-    var i = 0;
     function next(err) {
       var func = stack[i++];
       if (!func) {
         if (out) return out(err);
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         if (err) {
-          if (http.STATUS_CODES[err]) {
-            res.statusCode = err;
-            return res.send(http.STATUS_CODES[err]);
+          if (typeof err === 'number') {
+            return res.error(err);
           }
-          res.statusCode = 500;
-          res.send(app.settings.env === 'development'
+          res.error(500, app.settings.env === 'development'
             ? (err.stack || err + '')
             : 'Sorry, an error occurred.'
           );
           console.error(err.stack || err + '');
         } else {
-          res.statusCode = 404;
-          res.send('Not Found');
+          res.error(404);
         }
         return;
       }
@@ -198,6 +201,7 @@ var handler = function(app) {
       if (route) {
         var path = req.pathname
           , ch = path[route.length];
+
         if (path.indexOf(route) !== 0 
             || (ch && ch !== '/')) {
           return next(err);
@@ -229,23 +233,30 @@ var handler = function(app) {
 Application.prototype.use = function(route) {
   var self = this
     , func = slice.call(arguments, 1);
+
   if (typeof route !== 'string') {
     func.unshift(route);
     route = undefined;
   } else if (route[route.length-1] === '/') {
     route = route.slice(0, -1);
   }
+
   func.forEach(function(func) {
     func.route = route;
     self.stack.push(func);
   });
 };
 
-// ========== RESPONSE ========== //
+// # response
 // update the ETag or Last-Modified header
 Response.prototype.cached = function(tag) {
   if (this.app.settings.env === 'development') return false;
-  if (typeof tag === 'string' ? this.ETag(tag) : this.lastModified(tag)) {
+
+  var cached = typeof tag === 'string' 
+             ? this.ETag(tag) 
+             : this.lastModified(tag);
+
+  if (cached) {
     this.statusCode = 304;
     this.end();
     return true;
@@ -276,11 +287,12 @@ Response.prototype.contentType = function(type) {
 
 Response.prototype.setCookie =
 Response.prototype.cookie = function(name, val, opt) {
-  opt || (opt = {});
+  opt = opt || {};
   if (opt.getTime || (opt && typeof opt !== 'object')) {
     opt = { expires: opt };
   }
   opt.expires = opt.expires || opt.maxage || opt.maxAge;
+
   var header =
     escape(name) + '=' + escape(val)
     + (opt.expires != null ? '; expires='
@@ -293,38 +305,48 @@ Response.prototype.cookie = function(name, val, opt) {
     + (opt.domain ? '; domain=' + opt.domain : '')
     + (opt.secure ? '; secure' : '')
     + (opt.httpOnly ? '; httpOnly' : '');
+
   // do not overwrite other cookies!
   var current = this.header('Set-Cookie');
   if (current) {
     header = [header].concat(current);
   }
+
   this.header('Set-Cookie', header);
 };
 
 Response.prototype.clearCookie =
 Response.prototype.uncookie = function(key, opt) {
-  opt || (opt = {});
+  opt = opt || {};
   opt.expires = new Date(Date.now() - 24 * 60 * 60 * 1000);
   this.cookie(key, '0', opt);
 };
 
 // redirect a response, automatically resolve relative paths
 Response.prototype.redirect = function(path, code) {
-  var res = this, req = this.req, app = this.app;
-  path || (path = '/');
-  code || (code = 303);
+  var res = this
+    , req = this.req
+    , app = this.app;
+
+  path = path || '/';
+  code = +code || 303;
+
   if (!~path.indexOf('//')) {
     if (app.route) path = join(app.route, path);
-    if (path[0] === '/') path = path.slice(1);
+    if (path[0] === '/') path = path.substring(1);
     path = 'http' + (req.socket.encrypted ? 's' : '')
            + '://' + req.headers.host + '/' + path;
   }
+
   // http 1.0 user agents don't understand 303's:
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
-  if (code == 303 && req.httpVersionMinor < 1) {
+  if (code === 303 && req.httpVersionMinor < 1) {
     code = 302;
   }
-  res.writeHead(+code, { 'Location': path });
+
+  res.writeHead(code, { 
+    'Location': path 
+  });
   res.end();
 };
 
@@ -334,13 +356,44 @@ Response.prototype.header = function(name, val) {
     : this.getHeader(name) || '';
 };
 
+// send an http error code with an optional body
+Response.prototype.error = function(code, body) {
+  var res = this;
+
+  if (res.finished 
+      || res._header) return;
+
+  // remove all headers - hack
+  res._headers = {};
+  res._headerName = {};
+
+  res.statusCode = code = +code || 500;
+
+  // 204 and 304 should not have a body
+  if (code !== 204 && code !== 304 && code > 199) {
+    body = '<!doctype html>\n<title>' + code + '</title>\n'
+           + '<h1>' + http.STATUS_CODES[code] + '</h1>\n' 
+           + (body || '<p>An error occured.</p>');
+
+    res.writeHead(code, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': Buffer.byteLength(body)
+    });
+  } else {
+    body = undefined;
+  }
+
+  res.end(body); 
+};
+
 Response.prototype.send = function(data) {
-  var res = this, req = this.req, app = this.app;
+  var res = this
+    , req = this.req
+    , app = this.app;
 
   // no content
   if (!data) {
-    res.statusCode = 204;
-    return res.end();
+    return res.error(204);
   }
 
   res.statusCode || (res.statusCode = 200);
@@ -361,7 +414,8 @@ Response.prototype.send = function(data) {
   if (!res.header('Content-Type')) {
     res.contentType('text/html');
   }
-  res.header('Content-Length', buff ? data.length
+  res.header('Content-Length', buff 
+    ? data.length
     : Buffer.byteLength(data)
   );
   res.header('Content-Language', app.settings.lang);
@@ -374,26 +428,25 @@ Response.prototype.send = function(data) {
 
 // serve a static file
 Response.prototype.sendfile = function(file, next) {
-  var res = this, req = this.req, app = this.app;
+  var res = this
+    , req = this.req
+    , app = this.app;
+
   if (!next) next = req.next;
-  if (!file) return next(500);
-  if (~file.indexOf('..')) {
-    return next(403);
+  if (!file) {
+    return next(new Error('No file.'));
   }
-  if (file[0] !== '/') {
-    if (app.settings.root) {
-      file = join(app.settings.root, file);
-    } else {
-      return next(500);
-    }
+  if (file[0] !== '/' && app.settings.root) {
+    file = join(app.settings.root, file);
   }
+
   fs.stat(file, function on(err, stat) {
     if (err && err.code === 'ENOENT') {
-      return next(404);
+      return res.error(404);
     }
 
     if (err || !stat) {
-      return next(500);
+      return next(err);
     }
 
     if (!stat.isFile()) {
@@ -401,17 +454,21 @@ Response.prototype.sendfile = function(file, next) {
         file = join(file, 'index.html');
         return fs.stat(file, on);
       }
-      return next(500);
+      return next(err);
     }
 
-    var entity = stat.mtime.getTime() + ':' + stat.size;
-    res.setHeader('ETag', entity);
+    if (!res.header('ETag')) {
+      var entity = +stat.mtime + ':' + stat.size;
+      //if (!res.header('ETag') 
+      //    && res.cached(entity)) return;
+      res.header('ETag', entity);
 
-    if (app.settings.env !== 'development') {
-      var none = req.headers['if-none-match'];
-      if (none && none === entity) {
-        res.statusCode = 304;
-        return res.end();
+      if (app.settings.env !== 'development') {
+        var none = req.headers['if-none-match'];
+        if (none && none === entity) {
+          res.statusCode = 304;
+          return res.end();
+        }
       }
     }
 
@@ -419,8 +476,8 @@ Response.prototype.sendfile = function(file, next) {
     if (!res.header('Content-Type')) {
       res.contentType(file);
     }
-    res.setHeader('Content-Length', stat.size);
-    res.setHeader('Accept-Ranges', 'bytes');
+    res.header('Content-Length', stat.size);
+    res.header('Accept-Ranges', 'bytes');
 
     if (req.headers.range) {
       var range = (function() {
@@ -434,7 +491,7 @@ Response.prototype.sendfile = function(file, next) {
         }
       })();
       res.statusCode = range ? 206 : 416;
-      res.setHeader('Content-Range', 'bytes '
+      res.header('Content-Range', 'bytes '
         + (range ? range.start + '-' + range.end : '*')
         + '/' + stat.size
       );
@@ -477,7 +534,7 @@ var sendfile = (function() {
       , next = opt.next;
 
     fs.open(file, 'r', 0666, function(err, fd) {
-      if (err) return next(500);
+      if (err) return next(err);
 
       // ensure headers are rendered
       if (!res._header) {
@@ -570,16 +627,18 @@ var pipefile = function(req, res, opt) {
   res.socket.on('error', end);
 };
 
-// ========== REQUEST ========== //
+// # request
 // get a header, referer will fall back to the app's url
 Request.prototype.header = function(key) {
   var name = key.toLowerCase()
     , head = this.headers;
+
   if (name === 'referer' || name === 'referrer') {
     return head.referer || head.referrer
       || 'http' + (this.socket.encrypted ? 's' : '')
         + '://' + (head.host || this.app.host) + '/';
   }
+
   return head[name] || '';
 };
 
@@ -598,7 +657,7 @@ Request.prototype.__defineGetter__('xhr', function() {
   return xhr && xhr.toLowerCase() === 'xmlhttprequest';
 });
 
-// ========== VIEWS ========== //
+// # views
 // maybe directly embed liquor templates here
 Response.prototype.local =
 Response.prototype.locals = function(key, val) {
@@ -621,6 +680,7 @@ Response.prototype.show = function(name, locals, layout) {
     layout = locals;
     locals = undefined;
   }
+
   try {
     locals = merge(this._locals || (this._locals = {}), locals);
     return this.app.render(name, locals, layout);
@@ -640,7 +700,9 @@ Response.prototype.partial = function(name, locals) {
 Application.prototype._compile = (function() {
   // a preprocessor for includes and inheritence
   var load = function(views, temp) {
-    var parents = [], i = 0;
+    var parents = []
+      , i = 0;
+
     temp = read(join(views, temp), 'utf8');
     temp = temp.replace(/#extends +<([^>]+)>/gi, function(__, file) {
       i = parents.push(file);
@@ -655,6 +717,7 @@ Application.prototype._compile = (function() {
   };
   return function(name) {
     var cache = this._cache || (this._cache = {});
+
     if (!cache[name]) {
       var template = this.set('engine');
       if (typeof template === 'string') {
@@ -665,28 +728,33 @@ Application.prototype._compile = (function() {
       }
       cache[name] = template(load(this.set('views'), name));
     }
+
     return cache[name];
   };
 })();
 
 Application.prototype.render = function(name, locals, layout) {
   var self = this;
-  locals || (locals = {});
+
+  if (!locals) locals = {};
   if (locals.layout) {
     layout = locals.layout;
   }
   if (layout === undefined || layout === true) {
     layout = this.set('layout');
   }
+
   locals.layout = function(l) { layout = l; };
   locals.partial = function(name, loc) {
     return self._compile(name)(merge(loc || {}, locals));
   };
+
   var ret = self._compile(name)(locals);
   if (layout) {
     locals.body = ret;
     ret = self._compile(layout)(locals);
   }
+
   return ret;
 };
 
@@ -694,7 +762,7 @@ Application.prototype.partial = function(name, locals) {
   return this.render(name, locals, false);
 };
 
-// ========== MIDDLEWARE ========== //
+// # middleware
 vanilla.router = function(app) {
   var routes = {}
     , methods = ['get', 'post', 'put', 'delete'];
@@ -764,7 +832,12 @@ vanilla.static = function(opt) {
   return function(req, res, next) {
     if (req.method !== 'GET'
         && req.method !== 'HEAD') return next();
+
+    if (~req.url.indexOf('..')) return res.error(403);
+
+    // this removes the need for stat calls
     if (!~list.indexOf(req.path[0])) return next();
+
     res.sendfile(join(path, req.pathname), next);
   };
 };
@@ -779,7 +852,8 @@ vanilla.favicon = function(opt) {
   return function(req, res, next) {
     if (req.pathname.toLowerCase() === '/favicon.ico') {
       if (req.httpVersionMinor < 1) {
-        res.setHeader('Expires', new Date(Date.now() + 86400000).toUTCString());
+        res.setHeader('Expires', 
+                      new Date(Date.now() + 86400000).toUTCString());
       }
       res.writeHead(200, head);
       return res.end(icon);
@@ -808,7 +882,7 @@ vanilla.cookieParser = function() {
 };
 
 vanilla.bodyParser = function(opt) {
-  opt || (opt = {});
+  opt = opt || {};
 
   var limit = opt.limit || Infinity
     , multi = opt.multipart && vanilla.multipart(opt)
@@ -897,7 +971,7 @@ vanilla.responseTime = function() {
 
 // a simple logger
 vanilla.log = function(opt) {
-  opt || (opt = {});
+  opt = opt || {};
   if (typeof opt === 'string') {
     opt = { path: opt };
   }
@@ -939,7 +1013,7 @@ vanilla.log = function(opt) {
         + ' -> ' + (code || res.statusCode)
         + ' (' + (Date.now() - start) + 'ms)' + '\n'
         + '  Referrer: ' + (head.referrer || head.referer || 'None') + '\n'
-        //+ '  User-Agent: ' + (head['user-agent'] || 'Unknown') + ')' + '\n'
+        + '  User-Agent: ' + (head['user-agent'] || 'Unknown') + ')' + '\n'
       );
       return writeHead.apply(res, arguments);
     };
@@ -948,14 +1022,16 @@ vanilla.log = function(opt) {
 };
 
 vanilla.auth = function(opt) {
-  var crypto = require('crypto');
+  var crypto = require('crypto')
+    , users = opt.users
+    , secret = opt.secret
+    , realm = opt.realm || 'secure area';
+
   var hash = function(pass) {
     return crypto.createHmac('sha256', secret)
                  .update(pass).digest('base64');
   };
-  var users = opt.users
-    , secret = opt.secret
-    , realm = opt.realm || 'secure area';
+
   return function(req, res, next) {
     if (req.username) return next();
     var auth = req.headers.authorization;
@@ -1069,10 +1145,11 @@ vanilla.session = function(opt) {
   };
 };
 
-// ========== HELPERS ========== //
+// # helpers
 var escape = function(str) {
   return encodeURIComponent(str).replace(/%20/g, '+');
 };
+
 var unescape = function(str) {
   try {
     return decodeURIComponent(str.replace(/\+/g, ' '));
@@ -1114,7 +1191,7 @@ var parsePath = function(req) {
   req.path = (function() {
     var path = pathname;
     if (path[0] === '/') {
-      path = path.slice(1);
+      path = path.substring(1);
     }
     path = path.split('/');
     if (!path[0]) return [];

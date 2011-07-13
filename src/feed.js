@@ -36,6 +36,7 @@ var build = function(req, res, posts) {
   posts = posts.map(function(post) {
     var timestamp = new Date(post.timestamp)
       , update = new Date(post.updated).toISOString();
+
     return {
       title: utils.escapeHTML(post.title),
       href: '/' + post.id,

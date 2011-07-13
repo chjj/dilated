@@ -53,14 +53,17 @@ style.middleware = style.handle = function(opt) {
 style.file = function(file, func, opt) {
   fs.stat(file, function(err, stat) {
     if (err) return func(err);
+
     var mtime = stat.mtime.getTime()
       , cached = cache[file] || (cache[file] = {});
+
     cached.updated = mtime;
     if (opt.cache) {
       if (cached.data && mtime <= cached.updated) {
         return func(null, cached.data);
       }
     }
+
     fs.readFile(file, 'utf8', function(err, css) {
       if (err) return func(err);
       style.preprocess(css, function(err, css) {
@@ -145,7 +148,8 @@ style.preprocess = function(css, func, opt) {
   // import other css files,
   // recursively preprocess them
   var imports = function() {
-    var pending = 0, child = { // hack
+    var pending = 0;
+    var child = { // hack
       dir: opt.dir,
       minify: opt.minify,
       cache: false // important

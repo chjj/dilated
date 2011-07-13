@@ -10,14 +10,14 @@ var $attempted = []
   , $recorded = [];
 
 var Pingback = function(req, res, body) {
-  var self = this;
   if (!(this instanceof Pingback)) {
     return new Pingback(req, res, body);
   }
 
   EventEmitter.call(this);
 
-  this.readable = this.writable = true;
+  this.readable = true;
+  this.writable = true;
 
   this.req = req;
   this.res = res;
@@ -30,17 +30,16 @@ var Pingback = function(req, res, body) {
     }
   } else {
     // give time for the event listeners to be bound
+    var self = this;
     process.nextTick(function() {
       self._handle();
     });
   }
 };
 
-Pingback.prototype = Object.create(EventEmitter.prototype, {
-  constructor: { value: Pingback }
-});
+Pingback.prototype.__proto__ = EventEmitter.prototype;
 
-// ========== RECEIVING ========== //
+// # receiving
 // fault code constants
 Pingback.METHOD_NOT_FOUND = -32601;
 Pingback.GENERAL_ERROR = 0;
@@ -83,9 +82,11 @@ Pingback.prototype._fault = (function() {
     var body = _body
       .replace('__CODE__', code)
       .replace('__FAULT__', _faults[code]);
+
     this.res.statusCode = 400;
     this.res.setHeader('Content-Length', Buffer.byteLength(body));
     this.res.end(body, 'utf8');
+
     this.emit('fault', code, _faults[code]);
     this.destroy();
   };
@@ -112,7 +113,7 @@ Pingback.prototype._success = (function() {
 
 Pingback.prototype.write = function(data) {
   if (Buffer.isBuffer(data)) {
-    this._decoder || (this._decoder = new StringDecoder('utf8'));
+    if (!this._decoder) this._decoder = new StringDecoder('utf8');
     data = this._decoder.write(data);
   }
   // buffer the body
@@ -142,7 +143,8 @@ var _param = new RegExp(
 'gi');
 
 Pingback.prototype._handle = function() {
-  var self = this, body = this.body;
+  var self = this
+    , body = this.body;
 
   // the xml-rpc spec says to use text/xml,
   // but then again, that was from a long time ago
@@ -297,7 +299,7 @@ Pingback.prototype._pass = function() {
   });
 };
 
-// ========== SENDING ========== //
+// # sending
 // send a pingback
 Pingback.send = (function() {
   var _body = [
@@ -375,7 +377,9 @@ Pingback.scan = function(text, source, func) {
     source = parse(source);
   }
   text.replace(/href=([^\s>]+)/gi, function(__, target) {
-    target = parse(target.replace(/['"]/g, '').replace(/&amp;/gi, '&').trim());
+    target = target.replace(/['"]/g, '')
+                   .replace(/&amp;/gi, '&');
+    target = parse(target.trim());
     if (!target || !target.host || target.host === source.host) {
       return;
     }
@@ -383,7 +387,7 @@ Pingback.scan = function(text, source, func) {
   });
 };
 
-// ========== REQUEST ========== //
+// # request
 // make an http request
 var request = function(url, body, func) {
   if (typeof url !== 'object') {
@@ -416,7 +420,19 @@ var request = function(url, body, func) {
   var req = http.request(opt);
   req.on('response', function(res) {
     var decoder = new StringDecoder('utf8')
-      , total = 0, body = '', done = false;
+      , total = 0
+      , body = ''
+      , done = false;
+
+    // an agent socket's `end` sometimes
+    // wont be emitted on the response
+    var end = function() {
+      if (done) return;
+      done = true;
+      res.body = body;
+      func(null, res);
+    };
+
     res.on('data', function(data) {
       total += data.length;
       body += decoder.write(data);
@@ -429,14 +445,7 @@ var request = function(url, body, func) {
       this.destroy();
       func(err);
     });
-    // an agent socket's `end` sometimes
-    // wont be emitted on the response
-    var end = function() {
-      if (done) return;
-      done = true;
-      res.body = body;
-      func(null, res);
-    };
+
     res.on('end', end);
     res.socket.on('end', end);
   });

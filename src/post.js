@@ -162,6 +162,7 @@ Post.prototype.update = function(func) {
 Post.remove = function(post, func) {
   var id = post.id || post
     , stale = __meta[id];
+
   if (stale) {
     if (stale.tags) {
       stale.tags.forEach(_removeTag);
@@ -169,6 +170,7 @@ Post.remove = function(post, func) {
     }
     delete __meta[id];
   }
+
   fs.unlink(Post.getPath(id), function() {
     var dir = Post.getAssetPath(id);
     fs.readdir(dir, function(err, list) {
@@ -369,7 +371,8 @@ Post.getByTag = function(tag, func) {
 // search every posts metadata for a string
 // check the tags and the title
 Post.search = function(search, func) {
-  var items = [], k
+  var items = []
+    , k
     , post
     , tags
     , str;

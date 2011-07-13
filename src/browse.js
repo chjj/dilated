@@ -1,5 +1,5 @@
-var utils = require('./utils');
-var Post = require('./post');
+var utils = require('./utils')
+  , Post = require('./post');
 
 var render = function(req, res, list) {
   if (!res.local('back')) {
