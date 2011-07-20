@@ -40,11 +40,14 @@ Post.updated = Date.now();
 
 // the top tags for all posts
 Post.tags = [];
-var __tags = {}; // tag counter
+
+// tag counter
+var __tags = {}; 
 
 // a simple merge
 Post.prototype.merge = function(obj) {
-  var k = Object.keys(obj), i = k.length;
+  var k = Object.keys(obj)
+    , i = k.length;
   while (i--) {
     this[k[i]] = obj[k[i]];
   }
@@ -69,8 +72,10 @@ Post.get = function(id, func, tag) {
     }
 
     try {
-      data = data.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      data = data.match(/^([\s\S]+?)\n\n([\s\S]+)$/).slice(1);
+      data = data
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+      data = /^([\s\S]+?)\n\n([\s\S]+)$/.exec(data).slice(1);
       data[0] = JSON.parse(data[0]);
       data[0].id = id;
       data[0].content = data[1];
@@ -245,7 +250,9 @@ Post.prototype.sync = function() {
 Post.getAdjacent = function(post, func, tag) {
   var id = post.id || post
     , list = ascending(__meta)
-    , i = list.length, before, after;
+    , i = list.length
+    , before
+    , after;
 
   while (i-- && list[i].id !== id);
 
@@ -351,8 +358,10 @@ Post.getLatest = function(num, func) {
 
 // get the last post
 Post.getLast = function(func, tag) {
-  var list = tag ? Post.getByTag(tag) 
-                 : descending(__meta);
+  var list = tag 
+    ? Post.getByTag(tag) 
+    : descending(__meta);
+
   var latest = list.shift();
   if (!latest || !latest.id) {
     return func(new Error('No posts.'));
@@ -427,7 +436,8 @@ Post.range = function(range, func, count) {
     , start = range.start
     , end = range.end
     , list = ascending(__meta)
-    , i = list.length, t;
+    , i = list.length
+    , t;
 
   while (i--) {
     t = list[i].timestamp;
@@ -605,7 +615,8 @@ var ascending = function(obj, key) {
   obj = obj.sort(function(a, b) {
     a = a[key];
     b = b[key];
-    return a > b ? 1 : (a < b ? -1 : 0);
+    return a > b 
+      ? 1 : (a < b ? -1 : 0);
   });
   return obj;
 };

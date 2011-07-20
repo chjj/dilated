@@ -30,14 +30,18 @@ app.configure('development', function() {
 });
 
 app.configure('production', function() {
-  app.use(vanilla.log(__dirname + '/http.log'));
+  app.use(vanilla.log({
+    path: __dirname + '/http.log',
+    limit: 5 * 1024 * 1024
+  }));
 });
 
 app.configure(function() {
-  var Post = require('./src/post')
-    , Pingback = require('pingback')
+  var pingback = require('pingback')
+    , csslike = require('csslike')
+    , Post = require('./src/post')
     , prettyHTML = require('./src/utils').prettyHTML
-    , STATUS_CODES = require('http').STATUS_CODES;
+    , codes = require('http').STATUS_CODES;
 
   app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
   app.use(vanilla.static(__dirname + '/static'));
@@ -74,7 +78,7 @@ app.configure(function() {
     next();
   });
 
-  app.use('/pingback', Pingback.middleware(
+  app.use('/pingback', pingback.middleware(
     function(source, target, next) {
       var ping = this
         , path = target.pathname;
@@ -84,14 +88,14 @@ app.configure(function() {
 
       Post.get(path, function(err, post) {
         if (err) {
-          return next(Pingback.TARGET_DOES_NOT_EXIST);
+          return next(pingback.TARGET_DOES_NOT_EXIST);
         }
         post.retrieve('pingbacks', function(err, data) {
           if (!data) data = [];
           var i = data.length;
           while (i--) {
             if (data[i].source === source.href) {
-              return next(Pingback.ALREADY_REGISTERED);
+              return next(pingback.ALREADY_REGISTERED);
             }
           }
           data.push({
@@ -107,10 +111,10 @@ app.configure(function() {
   ));
 
   app.use('/liquorice', 
-    require('csslike').handle({
+    csslike.handle({
       file: __dirname + '/static/style.css',
       dir: __dirname,
-      minify: false,
+      minify: !dev,
       cache: !dev
     })
   );
@@ -126,9 +130,9 @@ app.configure(function() {
     }
 
     var code = res.statusCode = +err.code || 500;
-    if (!STATUS_CODES[code]) code = 500;
+    if (!codes[code]) code = 500;
 
-    var status = code + ': ' + STATUS_CODES[code];
+    var status = code + ': ' + codes[code];
 
     // clear headers - hack
     res._headers = {};
