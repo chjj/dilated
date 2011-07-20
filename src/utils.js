@@ -1,9 +1,17 @@
+/**
+ * Utilities
+ */
+
 exports.escapeHTML = function(html, once) {
   return (html || '')
     .replace((once ? /&(?![^\s;]+;)/g : /&/g), '&amp;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 };
+
+/**
+ * Time Functions
+ */
 
 exports.date = function(date) {
   if (!date.getUTCFullYear) date = new Date(date);
@@ -83,19 +91,29 @@ exports.prettyTime = function(time) {
   }
 };
 
-exports.markdown = exports.showdown = (function() {
-  var showdown = require('../deps/showdown');
+/**
+ * Markdown
+ */
+
+exports.markdown = 
+exports.showdown = (function() {
+  var showdown = require('showdown');
   return function(text) {
     return showdown(text);
   };
 })();
 
-// my own html pretty printer, doesnt play nice
-// with CDATA blocks currently
+/**
+ * Pretty print HTML
+ */
+
+exports.prettyHTML_ = function(str) { return str; };
+
 exports.prettyHTML = (function() {
   var indent = function(num) {
     return Array(num + 1).join('  ');
   };
+
   var closing = {
     base: true,
     link: true,
@@ -114,54 +132,74 @@ exports.prettyHTML = (function() {
     keygen: true,
     command: true
   };
-  return function(text) {
-    var place = []
-      , stack = []
-      , tag
+
+  var remove = /<(pre|textarea|title|p|li|a)(?:\s[^>]+)?>[\s\S]+?<\/\1>/g
+    , replace = /<!(\d+)%*\/>/g
+    , wrap = /([ \t]*)<p>([\s\S]+?)<\/p>/g;
+
+  return function(str) {
+    var hash = []
+      , out = []
       , cap
-      , num = 0;
+      , depth = 0
+      , text
+      , full
+      , tag
+      , name;
 
     // temporarily remove elements before 
     // processing, also remove whitespace
-    text = text.replace(
-      /<(pre|textarea|title|p|li|a)(?:\s[^>]+)?>[\s\S]+?<\/\1>/g,
-      function($0, $1) {
-        if ($1 === 'pre' || $1 === 'textarea') {
-          $0 = $0.replace(/\r?\n/g, '&#x0A;');
-        } else {
-          $0 = $0.replace(/(<[^\/][^>]*>)\s+|\s+(<\/)/g, '$1$2')
-                 .replace(/[\r\n]/g, '');
-        }
-        return '<!' + (place.push($0) - 1) 
-                    + (Array($0.length - 3).join('%')) + '/>';
+    str = str.replace(remove, function(element, name) {
+      if (name === 'pre' || name === 'textarea') {
+        element = element.replace(/\r?\n/g, '&#x0A;');
+      } else {
+        element = element
+          .replace(/(<[^\/][^>]*>)\s+|\s+(<\/)/g, '$1$2')
+          .replace(/[\r\n]/g, '');
       }
-    );
+      return '<!' + (hash.push(element) - 1) 
+                  + (Array(element.length - 3).join('%')) + '/>';
+    });
 
     // indent elements
-    text = text.replace(/(>)\s+|\s+(<)/g, '$1$2').replace(/[\r\n]/g, '');
-    while (cap = text.match(/^([\s\S]*?)<([^>]+)>/)) {
-      text = text.slice(cap[0].length);
-      tag = cap[2].split(' ')[0];
-      if (cap[1]) stack.push(indent(num) + cap[1]);
-      if (tag[0] !== '/') {
-        stack.push(indent(num) + '<' + cap[2] + '>');
-        if (!closing[tag] 
-            && tag[0] !== '!' 
-            && cap[2][cap[2].length-1] !== '/') num++;
+    str = str
+      .replace(/(>)\s+|\s+(<)/g, '$1$2')
+      .replace(/[\r\n]/g, '');
+
+    while (cap = /^([\s\S]*?)(<([^>]+)>)/.exec(str)) {
+      ;;; str = str.substring(cap[0].length)
+        , text = cap[1]
+        , full = cap[2]
+        , tag = cap[3]
+        , name = tag.split(' ')[0];
+
+      if (text) {
+        out.push(indent(depth) + text);
+      }
+
+      if (name[0] !== '/') {
+        out.push(indent(depth) + full);
+        if (!closing[name] 
+            && name[0] !== '!' 
+            && name[0] !== '?' 
+            && tag[tag.length-1] !== '/') {
+          depth++;
+        }
       } else {
-        num--;
-        stack.push(indent(num) + '<' + cap[2] + '>');
+        depth--;
+        out.push(indent(depth) + full);
       }
     }
-    text = stack.join('\n');
+    str = out.join('\n');
 
-    // restore the elements to their original locations
-    text = text.replace(/<!(\d+)%*\/>/g, function($0, $1) {
-      return place[$1];
+    // restore the elements to 
+    // their original locations
+    str = str.replace(replace, function($0, $1) {
+      return hash[$1];
     });
 
     // wrap paragraphs
-    text = text.replace(/([ \t]*)<p>([\s\S]+?)<\/p>/g, function($0, $1, $2) {
+    str = str.replace(wrap, function($0, $1, $2) {
       var indent = $1 + '  '
         , text = indent + $2;
 
@@ -174,6 +212,6 @@ exports.prettyHTML = (function() {
       return $1 + '<p>\n' + text + '\n' + $1 + '</p>';
     });
 
-    return text;
+    return str;
   };
 })();

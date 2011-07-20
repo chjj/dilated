@@ -1,3 +1,7 @@
+/**
+ * Atom Feed
+ */
+
 var utils = require('./utils')
   , Post = require('./post');
 
@@ -14,6 +18,10 @@ var tag = (function() {
 var cache
   , updated;
 
+/**
+ * Handler
+ */
+
 module.exports = function(req, res, next) {
   if (res.cached(Post.updated)) return;
   res.contentType('.atom');
@@ -22,15 +30,19 @@ module.exports = function(req, res, next) {
   }
   Post.getLatest(10, function(err, posts) {
     if (err) return next(404);
-    var len = posts.length;
+    var pending = posts.length;
     posts.forEach(function(post, i) {
       Post.get(post.id, function(err, post) {
         if (!err) posts[i] = post;
-        --len || build(req, res, posts);
+        --pending || build(req, res, posts);
       });
     });
   });
 };
+
+/**
+ * Feed Compiler
+ */
 
 var build = function(req, res, posts) {
   posts = posts.map(function(post) {

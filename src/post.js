@@ -1,4 +1,8 @@
-// Post Management
+/**
+ * Post 
+ * Low-level Data Management
+ */
+
 // where all the data management happens
 // every function here is defined in
 // async style, even when unecessary.
@@ -13,6 +17,10 @@ var fs = require('fs')
 var extension = '.md'
   , content_dir;
 
+/**
+ * Post
+ */
+
 // __meta stores the metadata for all articles
 // in-memory, so its easy to sort and query
 var __meta = {};
@@ -24,7 +32,6 @@ var Post = function(data) {
   }
   if (data) this.merge(data);
 };
-module.exports = Post;
 
 // very important, this will change whenever
 // any alteration occurs, used as a timestamp
@@ -436,7 +443,10 @@ Post.range = function(range, func, count) {
   }
 };
 
-// ========== FILE MANAGEMENT ========== //
+/**
+ * File Management
+ */
+
 // all the lower level data management
 content_dir = config.content;
 
@@ -562,7 +572,7 @@ var _updateTags = function() {
       keys.forEach(function(id) {
         // the post no longer exists!
         if (!~list.indexOf(id + extension)) {
-          if (__meta[id]) Post.remove(id); //delete __meta[id];
+          if (__meta[id]) Post.remove(id); 
         }
       });
     }
@@ -577,7 +587,10 @@ var _updateTags = function() {
   poll();
 })();
 
-// ========== HELPERS ========== //
+/**
+ * Helpers
+ */
+
 var ascending = function(obj, key) {
   key = key || 'timestamp';
   if (!Array.isArray(obj)) {
@@ -622,3 +635,9 @@ var isotime = function(dt) {
 var mstime = function(dt) {
   return dateify(dt).getTime();
 };
+
+/**
+ * Expose
+ */
+
+module.exports = Post;

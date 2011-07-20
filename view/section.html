@@ -1,8 +1,8 @@
-#extends <root.html>
+<!extends "root.html">
 
 <section>
   <h1>#{title}</h1>
-  #body
+  __body__
   ?:back
     <footer><a href="#{back}" rel="prev">Back</a></footer>
 </section>

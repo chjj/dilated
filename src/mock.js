@@ -1,4 +1,6 @@
-// generate mock data
+/**
+ * Mock Data Generation
+ */
 
 var ipsum = function(num) {
   var lorem = _lorem.sort(function() { return Math.random() > .5 ? -1 : 1; })
@@ -51,7 +53,8 @@ module.exports = function(fs, dir, ext) {
         return s.toUpperCase();
       });
     id = title.toLowerCase().replace(/\s+/g, '_');
-    date = (new Date(Date.now() - (Math.random() * (1000 * 60 * 60 * 24 * 7 * 10))));
+    date = new Date(Date.now() - (Math.random() * 
+                    (1000 * 60 * 60 * 24 * 7 * 10)));
     fs.writeFileSync(
       dir + '/' + id + ext,
       JSON.stringify({

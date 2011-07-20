@@ -1,3 +1,7 @@
+/**
+ * Sitemap
+ */
+
 var Post = require('./post');
 
 module.exports = function(req, res, next) {
@@ -14,7 +18,12 @@ module.exports = function(req, res, next) {
         priority: '0.5'
       };
     });
-    posts.push({loc: config.host + '/', priority: '0'});
-    res.render('sitemap.xml', { map: posts });
+    posts.push({
+      loc: config.host + '/', 
+      priority: '0'
+    });
+    res.render('sitemap.xml', { 
+      map: posts 
+    });
   });
 };

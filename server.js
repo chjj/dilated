@@ -1,22 +1,30 @@
 #!/usr/bin/env node
 
-var vanilla = require('./deps/vanilla')
-  , app = vanilla.createServer();
+var vanilla = require('vanilla')
+  , app = vanilla.createServer()
+  , dev = app.settings.env === 'development';
 
-// # settings
+/**
+ * Settings
+ */
+
 app.configure(function() {
-  var read = require('fs').readFileSync;
+  var fs = require('fs')
+    , fread = fs.readFileSync;
   
-  config = JSON.parse(read(__dirname + '/config.json', 'utf8'));
+  config = JSON.parse(fread(__dirname + '/config.json', 'utf8'));
   config.content = config.content.replace(/^\./, __dirname);
   config.root = __dirname;
 
   app.set('root', __dirname);
   app.set('views', __dirname + '/view');
-  app.set('engine', './liquor');
+  app.set('engine', 'liquor');
 });
 
-// # middleware
+/**
+ * Middleware
+ */
+
 app.configure('development', function() {
   app.use(vanilla.responseTime());
 });
@@ -27,7 +35,7 @@ app.configure('production', function() {
 
 app.configure(function() {
   var Post = require('./src/post')
-    , Pingback = require('./deps/pingback')
+    , Pingback = require('pingback')
     , prettyHTML = require('./src/utils').prettyHTML
     , STATUS_CODES = require('http').STATUS_CODES;
 
@@ -98,6 +106,15 @@ app.configure(function() {
     }
   ));
 
+  app.use('/liquorice', 
+    require('csslike').handle({
+      file: __dirname + '/static/style.css',
+      dir: __dirname,
+      minify: false,
+      cache: !dev
+    })
+  );
+
   app.use(vanilla.router(app));
 
   // error handling
@@ -126,23 +143,15 @@ app.configure(function() {
   });
 });
 
-// # routes
-app.configure(function() {
-  var dev = app.settings.env === 'development';
+/**
+ * Routes
+ */
 
+app.configure(function() {
   var admin = require('./src/admin')
     , browse = require('./src/browse')
     , feed = require('./src/feed')
-    , style = require('./deps/style')
-    , sitemap = require('./src/sitemap')
-    , article = require('./src/article');
-
-  app.get('/liquorice', style.handle({
-    file: __dirname + '/static/style.css',
-    dir: __dirname,
-    minify: false,
-    cache: !dev
-  }));
+    , sitemap = require('./src/sitemap');
 
   app.get('/feed', feed);
 
@@ -156,17 +165,26 @@ app.configure(function() {
 
   app.get('/', browse.search);
 
-  app.get('*', article.get);
-  app.post('*', article.post);
+  app.get('*', browse.display);
+  app.post('*', browse.modify);
+  app.put('*', browse.modify);
+  app.del('*', browse.modify);
 });
 
-// log uncaught errors
+/**
+ * Error Handling
+ */
+
 app.configure('production', function() {
   process.on('uncaughtException', function(err) {
     err = err.stack || err + '';
     console.error(new Date().toISOString() + ': ' + err);
   });
 });
+
+/**
+ * Listen
+ */
 
 if (!module.parent) {
   app.configure('development', function() {
