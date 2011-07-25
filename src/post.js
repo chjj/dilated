@@ -1,6 +1,5 @@
 /**
- * Post 
- * Low-level Data Management
+ * Data Management
  */
 
 // where all the data management happens
@@ -75,11 +74,11 @@ Post.get = function(id, func, tag) {
       data = data
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n');
-      data = /^([\s\S]+?)\n\n([\s\S]+)$/.exec(data).slice(1);
-      data[0] = JSON.parse(data[0]);
-      data[0].id = id;
-      data[0].content = data[1];
-      data = data[0];
+      data = /^([\s\S]+?)\n\n([\s\S]+)$/.exec(data);
+      data[1] = JSON.parse(data[1]);
+      data[1].id = id;
+      data[1].content = data[2];
+      data = data[1];
     } catch(e) {
       return func(e);
     }
@@ -147,13 +146,16 @@ Post.update = function(id, post, func) {
   // stringify and filter out stuff we dont
   // want in the actual file
   var out = JSON.stringify(post, function(key, val) {
-    if (key === 'content' || key === 'id') {
-      return;
+    switch (key) {
+      case 'content':
+      case 'id':
+        return;
+      case 'timestamp':
+      case 'updated':
+        return isotime(val);
+      default:
+        return val;
     }
-    if (key === 'timestamp' || key === 'updated') {
-      return isotime(val);
-    }
-    return val;
   }, 2);
 
   out += '\n\n' + post.content;
@@ -187,14 +189,17 @@ Post.remove = function(post, func) {
     var dir = Post.getAssetPath(id);
     fs.readdir(dir, function(err, list) {
       if (err) return func && func();
+
       var pending = list.length;
       if (!pending) return done();
+
       list.forEach(function(file) {
         file = dir + '/' + file;
         fs.unlink(file, function() {
           --pending || done();
         });
       });
+
       function done() {
         fs.unlink(dir, function() {
           if (func) func();
@@ -258,7 +263,8 @@ Post.getAdjacent = function(post, func, tag) {
 
   if (tag) {
     before = (function() {
-      var k = i, post;
+      var k = i
+        , post;
       while (post = list[--k]) {
         if (post.tags && ~post.tags.indexOf(tag)) {
           return post;
@@ -266,7 +272,8 @@ Post.getAdjacent = function(post, func, tag) {
       }
     })();
     after = (function() {
-      var k = i, post;
+      var k = i
+        , post;
       while (post = list[++k]) {
         if (post.tags && ~post.tags.indexOf(tag)) {
           return post;
@@ -298,7 +305,9 @@ Post.store = function(post, key, val, func) {
       fs.writeFile(
         Post.getAssetPath(id, 'data.json'),
         JSON.stringify(data),
-        function(err) { func(err); }
+        function(err) { 
+          func(err); 
+        }
       );
     });
   });
@@ -324,7 +333,8 @@ Post.retrieve = function(post, key, func) {
     }
     if (post.id) { // cache
       Object.defineProperty(post, '_data', {
-        value: data
+        value: data, 
+        enumerable: false
       });
     }
     func(null, data);
@@ -366,6 +376,7 @@ Post.getLast = function(func, tag) {
   if (!latest || !latest.id) {
     return func(new Error('No posts.'));
   }
+
   Post.get(latest.id, func, tag);
 };
 
@@ -381,24 +392,28 @@ Post.getByTag = function(tag, func) {
     }
   }
 
-  return func ? func(null, items) : items;
+  return func 
+    ? func(null, items) 
+    : items;
 };
 
 // search every posts metadata for a string
 // check the tags and the title
 Post.search = function(search, func) {
-  var items = []
-    , k
+  var search = search.toLowerCase()
+    , items = []
+    , key
     , post
     , tags
     , str;
 
-  search = search.toLowerCase();
-
-  for (k in __meta) {
-    post = __meta[k],
-    tags = post.tags ? post.tags.join(' ') : '',
-    str = (post.title + ' ' + tags).toLowerCase();
+  for (key in __meta) {
+    post = __meta[key];
+    tags = post.tags 
+      ? post.tags.join(' ') 
+      : '';
+    str = (post.title + ' ' + tags)
+      .toLowerCase();
     if (~str.indexOf(search)) {
       items.push(post);
     }
@@ -413,7 +428,10 @@ Post.search = function(search, func) {
 
 Post.buildTags = function(obj, tag) {
   return obj.map(function(t) {
-    return { tag: t, set: t === tag };
+    return { 
+      tag: t, 
+      set: t === tag 
+    };
   });
 };
 
@@ -422,7 +440,8 @@ Post.prototype.buildTags = function(tag) {
 };
 
 // return sorted arrays of post __metadata
-Post.desc = function(func) { // rename to "list" and drop asc??
+// rename to "list" and drop asc??
+Post.desc = function(func) { 
   func(null, descending(__meta));
 };
 
@@ -483,9 +502,9 @@ var header = function(file, func) {
         if (err || !bytes) return done(err);
         for (i = 0; i < bytes; i++) {
           if (data[i] === 13) {
-            continue; // ignore CR
+            continue; 
           }
-          if (data[i] === 10) { // LF
+          if (data[i] === 10) { 
             if (++num === 2) {
               return done();
             }
@@ -500,7 +519,8 @@ var header = function(file, func) {
     })(function(err) {
       fs.close(fd, function() {
         try {
-          data = JSON.parse(str + data.slice(0, i).toString('utf8'));
+          str += data.slice(0, i).toString('utf8');
+          data = JSON.parse(str);
         } catch(e) {
           return func(e);
         }
@@ -554,7 +574,9 @@ var _updateTags = function() {
 
           data.id = id;
           data.timestamp = mstime(data.timestamp);
-          data.updated = data.updated ? mstime(data.updated) : Date.now();
+          data.updated = data.updated 
+            ? mstime(data.updated) 
+            : Date.now();
 
           __meta[id] = data; // index !
 
@@ -605,8 +627,12 @@ var ascending = function(obj, key) {
   key = key || 'timestamp';
   if (!Array.isArray(obj)) {
     obj = (function() {
-      var a = [], k = Object.keys(obj);
-      for (var i = 0, l = k.length; i < l; i++) {
+      var a = []
+        , k = Object.keys(obj)
+        , i = 0
+        , l = k.length;
+
+      for (; i < l; i++) {
         a.push(obj[k[i]]);
       }
       return a;
@@ -615,8 +641,7 @@ var ascending = function(obj, key) {
   obj = obj.sort(function(a, b) {
     a = a[key];
     b = b[key];
-    return a > b 
-      ? 1 : (a < b ? -1 : 0);
+    return a > b ? 1 : (a < b ? -1 : 0);
   });
   return obj;
 };
@@ -633,7 +658,7 @@ var dateify = function(date) {
   if (date && !date.toISOString) {
     date = new Date(date);
   }
-  if (!date || date.toString() === 'Invalid Date') {
+  if (!date || isNaN(+date)) {
     date = new Date();
   }
   return date;

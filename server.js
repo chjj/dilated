@@ -4,14 +4,15 @@ var vanilla = require('vanilla')
   , app = vanilla.createServer()
   , dev = app.settings.env === 'development';
 
+var fs = require('fs')
+  , fread = fs.readFileSync
+  , fwrite = fs.writeFileSync;
+
 /**
  * Settings
  */
 
 app.configure(function() {
-  var fs = require('fs')
-    , fread = fs.readFileSync;
-  
   config = JSON.parse(fread(__dirname + '/config.json', 'utf8'));
   config.content = config.content.replace(/^\./, __dirname);
   config.root = __dirname;
@@ -19,6 +20,14 @@ app.configure(function() {
   app.set('root', __dirname);
   app.set('views', __dirname + '/view');
   app.set('engine', 'liquor');
+
+  app.error(function(err, req, res) {
+    res.render('error.html', {
+      title: err.phrase,
+      message: err.body || err.phrase,
+      back: req.header('referer') || '.'
+    });
+  });
 });
 
 /**
@@ -48,32 +57,12 @@ app.configure(function() {
   app.use(vanilla.cookieParser());
   app.use(vanilla.bodyParser({limit: 100 * 1024}));
 
-  // prettify all markup
   app.use(function(req, res, next) {
-    var send = res.send;
-    res.send = function(data) {
-      res.send = send;
-      var type = res.header('Content-Type') || '';
-      if ((!type || /html|xml/i.test(type))
-          && typeof data === 'string') {
-        arguments[0] = data = prettyHTML(data);
-      }
-      return send.apply(res, arguments);
-    };
-    next();
-  });
-
-  app.use(function(req, res, next) {
-    // secure? no. this is temporary,
-    // should probably use sessions
     res.login = req.cookies.user === config.pass;
     res.locals({
+      rel: undefined,
       login: res.login,
-      path: req.path,
-      pathname: req.pathname,
-      rel: {},
-      tags: Post.buildTags(Post.tags.slice(0, 6), req.path[0]),
-      app: app
+      tags: Post.buildTags(Post.tags.slice(0, 6), req.path[0])
     });
     next();
   });
@@ -114,37 +103,12 @@ app.configure(function() {
     csslike.handle({
       file: __dirname + '/static/style.css',
       dir: __dirname,
-      minify: !dev,
+      minify: true, // !dev,
       cache: !dev
     })
   );
 
   app.use(vanilla.router(app));
-
-  // error handling
-  app.use(function(err, req, res, next) {
-    if (typeof err === 'number') {
-      err = { code: err };
-    } else if (!err.code) {
-      console.error(err.stack || err + '');
-    }
-
-    var code = res.statusCode = +err.code || 500;
-    if (!codes[code]) code = 500;
-
-    var status = code + ': ' + codes[code];
-
-    // clear headers - hack
-    res._headers = {};
-    res._headerNames = {};
-
-    res.render('error.html', {
-      title: status,
-      message: err.msg || status,
-      rel: {},
-      back: req.header('referer') || '.'
-    });
-  });
 });
 
 /**
@@ -152,27 +116,25 @@ app.configure(function() {
  */
 
 app.configure(function() {
-  var admin = require('./src/admin')
-    , browse = require('./src/browse')
-    , feed = require('./src/feed')
-    , sitemap = require('./src/sitemap');
+  var handle = require('./src/handle');
 
-  app.get('/feed', feed);
+  app.get('/feed', handle.feed);
 
-  app.get('/logout', admin.logout);
-  app.get('/admin', admin.get);
-  app.post('/admin', admin.login);
+  app.get('/logout', handle.logout);
+  app.get('/admin', handle.admin);
+  app.post('/admin', handle.login);
 
-  app.get('browse', browse.year);
+  app.get('browse', handle.year);
 
-  app.get('/sitemap.xml', sitemap);
+  app.get('/sitemap.xml', handle.sitemap);
 
-  app.get('/', browse.search);
+  app.get('/', handle.search);
 
-  app.get('*', browse.display);
-  app.post('*', browse.modify);
-  app.put('*', browse.modify);
-  app.del('*', browse.modify);
+  app.get('*', handle.display);
+
+  app.post('*', handle.modify);
+  app.put('*', handle.modify);
+  app.del('*', handle.modify);
 });
 
 /**
@@ -200,3 +162,9 @@ if (!module.parent) {
 } else {
   module.exports = app;
 }
+
+/**
+ * Expose PID
+ */
+
+fwrite(__dirname + '/.pid', process.pid + '');

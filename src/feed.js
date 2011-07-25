@@ -5,18 +5,15 @@
 var utils = require('./utils')
   , Post = require('./post');
 
-var tag = (function() {
-  var design = 'tag:%0,%1:%2';
-  return function() {
-    var args = arguments;
-    return design.replace(/%\d/g, function(s) {
-      return args[s[1]];
-    });
-  };
-})();
-
 var cache
   , updated;
+
+var tag = function(host, year, id) {
+  return 'tag:' 
+    + host + ',' 
+    + year + ':' 
+    + id;
+};
 
 /**
  * Handler
@@ -25,9 +22,11 @@ var cache
 module.exports = function(req, res, next) {
   if (res.cached(Post.updated)) return;
   res.contentType('.atom');
+
   if (cache && updated >= Post.updated) {
     return res.send(cache);
   }
+
   Post.getLatest(10, function(err, posts) {
     if (err) return next(404);
     var pending = posts.length;

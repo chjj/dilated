@@ -3,8 +3,11 @@
  */
 
 var ipsum = function(num) {
-  var lorem = _lorem.sort(function() { return Math.random() > .5 ? -1 : 1; })
-    , words = []
+  var lorem = _lorem.sort(function() { 
+    return Math.random() > .5 ? -1 : 1; 
+  });
+
+  var words = []
     , i = lorem.length;
 
   if (num) {

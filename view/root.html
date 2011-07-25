@@ -7,11 +7,11 @@
   <link rel="canonical" href="#{canonical}">
 <!-- =============================================== code === is === art === -->
 <header>
-  <h1><a href="/" rel="home#{rel.home ? ' self' : ''}">
+  <h1><a href="/" rel="home#{rel === 'home' ? ' self' : ''}">
     dilated
   </a></h1>
   <nav><ul>
-    <li><a href="/browse" rel="archives#{rel.browse ? ' directory' : ''}">
+    <li><a href="/browse" rel="archives#{rel === 'browse' ? ' directory' : ''}">
       Browse
     </a></li>
     @:tags
