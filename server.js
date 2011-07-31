@@ -103,7 +103,7 @@ app.configure(function() {
     csslike.handle({
       file: __dirname + '/static/style.css',
       dir: __dirname,
-      minify: true, // !dev,
+      minify: !dev,
       cache: !dev
     })
   );
