@@ -9,3 +9,4 @@
 - Fix pretty printer with CDATA blocks.
 - Tweak the design a bit, it's become more bloated than necessary.
 - Source browsing.
+- Update todo list.

@@ -49,7 +49,6 @@ app.configure(function() {
   var pingback = require('pingback')
     , csslike = require('csslike')
     , Post = require('./src/post')
-    , prettyHTML = require('./src/utils').prettyHTML
     , codes = require('http').STATUS_CODES;
 
   app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
