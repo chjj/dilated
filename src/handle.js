@@ -402,7 +402,9 @@ var get = function(req, res, params, func) {
 
   function done(err, post) {
     if (err) {
-      return res.error(404);
+      return err.code === 'ENOENT' 
+        ? req.next() 
+        : req.next(err);
     }
     func(post);
   }

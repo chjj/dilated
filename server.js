@@ -52,7 +52,6 @@ app.configure(function() {
     , codes = require('http').STATUS_CODES;
 
   app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
-  app.use(vanilla.static(__dirname + '/static'));
   app.use(vanilla.cookieParser());
   app.use(vanilla.bodyParser({limit: 100 * 1024}));
 
@@ -108,6 +107,8 @@ app.configure(function() {
   );
 
   app.use(vanilla.router(app));
+
+  app.use(vanilla.static(__dirname + '/static'));
 });
 
 /**

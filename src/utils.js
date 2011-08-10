@@ -11,9 +11,11 @@ exports.hash = function(str) {
 
 exports.escapeHTML = function(html, once) {
   return (html || '')
-    .replace((once ? /&(?![^\s;]+;)/g : /&/g), '&amp;')
-    .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    .replace(once ? /&(?![^\s;]+;)/g : /&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 };
 
 /**

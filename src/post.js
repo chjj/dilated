@@ -24,6 +24,9 @@ var extension = '.md'
 // in-memory, so its easy to sort and query
 var __meta = {};
 
+// tag counter
+var __tags = {}; 
+
 // prefix to avoid ambiguity with `post` variables
 var Post = function(data) {
   if (!(this instanceof Post)) {
@@ -32,6 +35,10 @@ var Post = function(data) {
   if (data) this.merge(data);
 };
 
+// expose
+Post.__meta = __meta;
+Post.__tags = __tags;
+
 // very important, this will change whenever
 // any alteration occurs, used as a timestamp
 // for caching mechanisms
@@ -39,9 +46,6 @@ Post.updated = Date.now();
 
 // the top tags for all posts
 Post.tags = [];
-
-// tag counter
-var __tags = {}; 
 
 // a simple merge
 Post.prototype.merge = function(obj) {
