@@ -10,6 +10,21 @@ var fs = require('fs')
   , fread = fs.readFileSync
   , fwrite = fs.writeFileSync;
 
+/**
+ * Settings
+ */
+
+var config = fread(__dirname + '/config.json', 'utf8');
+config = JSON.parse(config);
+config.content = config.content.replace(/^\./, __dirname);
+config.root = __dirname;
+
+module.config = config;
+
+/**
+ * Modules
+ */
+
 var Post = require('./lib/post')
   , handle = require('./lib/handle')
   , utils = require('./lib/utils')
@@ -17,14 +32,8 @@ var Post = require('./lib/post')
   , csslike = require('csslike');
 
 /**
- * Settings
+ * Configure
  */
-
-var config = fread(__dirname + '/config.json', 'utf8');
-
-config = JSON.parse(config);
-config.content = config.content.replace(/^\./, __dirname);
-config.root = __dirname;
 
 app.configure(function() {
   app.set('root', __dirname);
@@ -171,7 +180,6 @@ app.configure('production', function() {
  */
 
 module.exports = app;
-module.config = config;
 
 /**
  * Expose PID
