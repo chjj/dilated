@@ -1,9 +1,5 @@
 #!/usr/bin/env node
 
-var vanilla = require('vanilla')
-  , app = vanilla.createServer()
-  , dev = app.settings.env === 'development';
-
 var fs = require('fs')
   , path = require('path')
   , http = require('http')
@@ -24,6 +20,10 @@ module.config = config;
 /**
  * Modules
  */
+
+var vanilla = require('vanilla')
+  , app = vanilla.createServer()
+  , dev = app.settings.env === 'development';
 
 var Post = require('./lib/post')
   , handle = require('./lib/handle')
@@ -86,8 +86,10 @@ app.configure(function() {
       var ping = this
         , path = target.pathname;
 
-      path = path.replace(/^\/|\/$/g, '')
-                 .split('/').pop();
+      path = path
+        .replace(/^\/|\/$/g, '')
+        .split('/')
+        .pop();
 
       Post.get(path, function(err, post) {
         if (err) {
@@ -180,6 +182,7 @@ app.configure('production', function() {
  */
 
 module.exports = app;
+module.app = app;
 
 /**
  * Expose PID
