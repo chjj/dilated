@@ -5,18 +5,28 @@ var vanilla = require('vanilla')
   , dev = app.settings.env === 'development';
 
 var fs = require('fs')
+  , path = require('path')
+  , http = require('http')
   , fread = fs.readFileSync
   , fwrite = fs.writeFileSync;
+
+var Post = require('./lib/post')
+  , handle = require('./lib/handle')
+  , utils = require('./lib/utils')
+  , Pingback = require('pingback')
+  , csslike = require('csslike');
 
 /**
  * Settings
  */
 
-app.configure(function() {
-  config = JSON.parse(fread(__dirname + '/config.json', 'utf8'));
-  config.content = config.content.replace(/^\./, __dirname);
-  config.root = __dirname;
+var config = fread(__dirname + '/config.json', 'utf8');
 
+config = JSON.parse(config);
+config.content = config.content.replace(/^\./, __dirname);
+config.root = __dirname;
+
+app.configure(function() {
   app.set('root', __dirname);
   app.set('views', __dirname + '/view');
   app.set('engine', 'liquor');
@@ -46,10 +56,7 @@ app.configure('production', function() {
 });
 
 app.configure(function() {
-  var pingback = require('pingback')
-    , csslike = require('csslike')
-    , Post = require('./src/post')
-    , codes = require('http').STATUS_CODES;
+  var codes = http.STATUS_CODES;
 
   app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
   app.use(vanilla.cookieParser());
@@ -65,7 +72,7 @@ app.configure(function() {
     next();
   });
 
-  app.use('/pingback', pingback.middleware(
+  app.use('/pingback', Pingback.middleware(
     function(source, target, next) {
       var ping = this
         , path = target.pathname;
@@ -75,14 +82,14 @@ app.configure(function() {
 
       Post.get(path, function(err, post) {
         if (err) {
-          return next(pingback.TARGET_DOES_NOT_EXIST);
+          return next(Pingback.TARGET_DOES_NOT_EXIST);
         }
         post.retrieve('pingbacks', function(err, data) {
           if (!data) data = [];
           var i = data.length;
           while (i--) {
             if (data[i].source === source.href) {
-              return next(pingback.ALREADY_REGISTERED);
+              return next(Pingback.ALREADY_REGISTERED);
             }
           }
           data.push({
@@ -106,6 +113,8 @@ app.configure(function() {
     })
   );
 
+  app.use(utils.pretty.handle);
+
   app.use(vanilla.router(app));
 
   app.use(vanilla.static(__dirname + '/static'));
@@ -116,8 +125,6 @@ app.configure(function() {
  */
 
 app.configure(function() {
-  var handle = require('./src/handle');
-
   app.get('/feed', handle.feed);
 
   app.get('/logout', handle.logout);
@@ -152,16 +159,19 @@ app.configure('production', function() {
  * Listen
  */
 
-if (!module.parent) {
-  app.configure('development', function() {
-    app.listen(8080);
-  });
-  app.configure('production', function() {
-    app.listen(80);
-  });
-} else {
-  module.exports = app;
-}
+app.configure('development', function() {
+  app.listen(8080);
+});
+app.configure('production', function() {
+  app.listen(80);
+});
+
+/**
+ * Expose
+ */
+
+module.exports = app;
+module.config = config;
 
 /**
  * Expose PID
