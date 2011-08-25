@@ -35,17 +35,15 @@ var Post = require('./lib/post')
  * Configure
  */
 
-app.configure(function() {
-  app.set('root', __dirname);
-  app.set('views', __dirname + '/view');
-  app.set('engine', 'liquor');
+app.set('root', __dirname);
+app.set('views', __dirname + '/view');
+app.set('engine', 'liquor');
 
-  app.error(function(err, req, res) {
-    res.render('error.html', {
-      title: err.phrase,
-      message: err.body || err.phrase,
-      back: req.header('referer') || '.'
-    });
+app.error(function(err, req, res) {
+  res.render('error.html', {
+    title: err.phrase,
+    message: err.body || err.phrase,
+    back: req.header('referer') || '.'
   });
 });
 
@@ -64,96 +62,93 @@ app.configure('production', function() {
   }));
 });
 
-app.configure(function() {
-  var codes = http.STATUS_CODES;
 
-  app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
-  app.use(vanilla.cookieParser());
-  app.use(vanilla.bodyParser({limit: 100 * 1024}));
+app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
+app.use(vanilla.cookieParser());
+app.use(vanilla.bodyParser({limit: 100 * 1024}));
 
-  app.use(function(req, res, next) {
-    res.login = req.cookies.user === config.pass;
-    res.locals({
-      rel: undefined,
-      login: res.login,
-      tags: Post.buildTags(Post.tags.slice(0, 6), req.path[0])
-    });
-    next();
+app.use(function(req, res, next) {
+  res.login = req.cookies.user === config.pass;
+  res.locals({
+    rel: undefined,
+    login: res.login,
+    tags: Post.buildTags(Post.tags.slice(0, 6), req.path[0])
   });
-
-  app.use('/pingback', Pingback.middleware(
-    function(source, target, next) {
-      var ping = this
-        , path = target.pathname;
-
-      path = path
-        .replace(/^\/|\/$/g, '')
-        .split('/')
-        .pop();
-
-      Post.get(path, function(err, post) {
-        if (err) {
-          return next(Pingback.TARGET_DOES_NOT_EXIST);
-        }
-        post.retrieve('pingbacks', function(err, data) {
-          if (!data) data = [];
-          var i = data.length;
-          while (i--) {
-            if (data[i].source === source.href) {
-              return next(Pingback.ALREADY_REGISTERED);
-            }
-          }
-          data.push({
-            source: source.href,
-            title: ping.title,
-            excerpt: excerpt.title
-          });
-          post.store('pingbacks', data);
-          next();
-        });
-      });
-    }
-  ));
-
-  app.use('/liquorice', 
-    csslike.handle({
-      file: __dirname + '/static/style.css',
-      dir: __dirname,
-      minify: !dev,
-      cache: !dev
-    })
-  );
-
-  app.use(utils.pretty.handle);
-
-  app.use(vanilla.router(app));
-
-  app.use(vanilla.static(__dirname + '/static'));
+  next();
 });
+
+app.use('/pingback', Pingback.middleware(
+  function(source, target, next) {
+    var ping = this
+      , path = target.pathname;
+
+    path = path
+      .replace(/^\/|\/$/g, '')
+      .split('/')
+      .pop();
+
+    Post.get(path, function(err, post) {
+      if (err) {
+        return next(Pingback.TARGET_DOES_NOT_EXIST);
+      }
+      post.retrieve('pingbacks', function(err, data) {
+        if (!data) data = [];
+        var i = data.length;
+        while (i--) {
+          if (data[i].source === source.href) {
+            return next(Pingback.ALREADY_REGISTERED);
+          }
+        }
+        data.push({
+          source: source.href,
+          title: ping.title,
+          excerpt: excerpt.title
+        });
+        post.store('pingbacks', data);
+        next();
+      });
+    });
+  }
+));
+
+app.use('/liquorice', 
+  csslike.handle({
+    file: __dirname + '/static/style.css',
+    dir: __dirname,
+    minify: !dev,
+    cache: !dev
+  })
+);
+
+app.use(utils.pretty.handle);
+
+app.use(vanilla.router(app));
+
+app.use(vanilla.static(__dirname + '/static'));
+
 
 /**
  * Routes
  */
 
-app.configure(function() {
-  app.get('/feed', handle.feed);
+app.get('/feed', handle.feed);
 
-  app.get('/logout', handle.logout);
-  app.get('/admin', handle.admin);
-  app.post('/admin', handle.login);
+app.get('/logout', handle.logout);
+app.get('/admin', handle.admin);
+app.post('/admin', handle.login);
 
-  app.get('browse', handle.year);
+app.get('browse', handle.year);
 
-  app.get('/sitemap.xml', handle.sitemap);
+app.get('/sitemap.xml', handle.sitemap);
 
-  app.get('/', handle.search);
+app.get('/', handle.search);
 
-  app.get('*', handle.display);
+app.get('*', handle.display);
 
-  app.post('*', handle.modify);
-  app.put('*', handle.modify);
-  app.del('*', handle.modify);
-});
+app.post('*', handle.modify);
+app.put('*', handle.modify);
+app.del('*', handle.modify);
+
 
 /**
  * Error Handling
