@@ -25,7 +25,7 @@ var vanilla = require('vanilla')
   , app = vanilla.createServer()
   , dev = app.settings.env === 'development';
 
-var Post = require('./lib/post')
+var Post = require('./lib/data').Post
   , handle = require('./lib/handle')
   , utils = require('./lib/utils')
   , Pingback = require('pingback')
