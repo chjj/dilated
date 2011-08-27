@@ -14,12 +14,12 @@
   </header>
   #{post.content}
   <footer>
-    !:post.prev
+    !:post.previous
       <a href="#{post.permalink}" rel="bookmark first" title="Permalink">
         Current Article
       </a>
-    ?:post.prev
-      <a href="#{post.prev.href}" rel="prev" title="#{post.prev.title}">
+    ?:post.previous
+      <a href="#{post.previous.href}" rel="prev" title="#{post.previous.title}">
         Previous Article
       </a>
     ?:post.next
