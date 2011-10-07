@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+process.title = 'dilated';
+
 var fs = require('fs')
   , path = require('path')
   , http = require('http')
@@ -111,7 +113,7 @@ app.use('/pingback', Pingback.middleware(
   }
 ));
 
-app.use('/liquorice', 
+app.use('/liquorice',
   csslike.handle({
     file: __dirname + '/static/style.css',
     dir: __dirname,
