@@ -1,0 +1,33 @@
+#!/bin/bash
+
+cd $(dirname "$(readlink $0)")
+
+NODE=$(which node)
+if [ -z "$NODE" ]; then
+  NODE="/usr/local/bin/node"
+  if [ -f "$NODE" ]; then
+    echo "Node not found."
+    exit 1
+  fi
+fi
+
+if [ -n "$(pidof dilated)" ]; then
+  killall dilated
+  sleep 2
+fi
+
+case "$1" in
+  production | --production)
+    if [ $(id -u) -ne 0 ]; then
+      echo "You probably want root privelages."
+      exit 1
+    fi
+    export NODE_ENV=production
+    # daemonize...kind of
+    (setsid "$NODE" ./server > /dev/null 2>&1 &)
+  ;;
+  * | dev | --dev)
+    export NODE_ENV=development
+    exec "$NODE" ./server
+  ;;
+esac
