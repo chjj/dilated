@@ -30,7 +30,6 @@ var vanilla = require('vanilla')
 var Post = require('./lib/data').Post
   , handle = require('./lib/handle')
   , utils = require('./lib/utils')
-  , Pingback = require('pingback')
   , csslike = require('csslike');
 
 /**
