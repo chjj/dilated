@@ -1,11 +1,17 @@
 #!/bin/bash
 
-cd $(dirname "$(readlink $0)")
+r=$(readlink "$0")
+if [ -n "$r" ]; then
+  cd $(dirname "$r")
+else
+  cd $(dirname "$0")
+fi
+unset r
 
 NODE=$(which node)
 if [ -z "$NODE" ]; then
   NODE="/usr/local/bin/node"
-  if [ -f "$NODE" ]; then
+  if [ ! -f "$NODE" ]; then
     echo "Node not found."
     exit 1
   fi
