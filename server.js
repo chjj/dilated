@@ -66,7 +66,7 @@ app.configure('production', function() {
 
 app.use(vanilla.favicon(__dirname + '/static/favicon.ico'));
 app.use(vanilla.cookieParser());
-app.use(vanilla.gzip());
+//app.use(vanilla.gzip());
 app.use(vanilla.bodyParser({limit: 100 * 1024}));
 
 app.use(function(req, res, next) {

@@ -8,7 +8,7 @@ else
 fi
 unset r
 
-NODE=$(which node)
+NODE=$(which node 2>/dev/null)
 if [ -z "$NODE" ]; then
   NODE="/usr/local/bin/node"
   if [ ! -f "$NODE" ]; then
@@ -17,10 +17,8 @@ if [ -z "$NODE" ]; then
   fi
 fi
 
-if [ -n "$(pidof dilated)" ]; then
-  killall dilated
-  sleep 2
-fi
+killall node > /dev/null 2>&1 && sleep 2
+killall dilated > /dev/null 2>&1 && sleep 2
 
 case "$1" in
   production | --production)
