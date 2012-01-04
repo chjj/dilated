@@ -88,7 +88,7 @@ app.use('/liquorice',
   })
 );
 
-app.use(utils.pretty.handle);
+//app.use(utils.pretty.handle);
 
 app.use(vanilla.router(app));
 
