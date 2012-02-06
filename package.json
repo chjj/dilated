@@ -13,5 +13,6 @@
   "keywords": ["blog"],
   "repository": "git://github.com/chjj/dilated",
   "main": "./server",
-  "bin": { "dilated": "./server" }
+  "bin": { "dilate": "./dilate" },
+  "scripts": { "start": "./dilate" }
 }
