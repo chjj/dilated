@@ -16,9 +16,6 @@ if [ -z "$node" ]; then
   fi
 fi
 
-killall node > /dev/null 2>&1 && sleep 2
-killall dilated > /dev/null 2>&1 && sleep 2
-
 case "$1" in
   production | --production)
     if [ $(id -u) -ne 0 ]; then
@@ -26,7 +23,6 @@ case "$1" in
       exit 1
     fi
     export NODE_ENV=production
-    # daemonize...kind of
     (setsid "$node" ./server > /dev/null 2>&1 &)
   ;;
   * | dev | --dev)
