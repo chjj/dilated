@@ -39,6 +39,7 @@ var Post = require('./lib/data').Post
 app.set('root', __dirname);
 app.set('views', __dirname + '/view');
 app.set('engine', 'liquor');
+app.set('engine options', { pretty: true });
 
 app.error(function(err, req, res) {
   res.render('error.html', {
