@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+//   ___        ___  __  __  ___
+//  /  / / /   /__/  /  /_  /  /
+// /__/ / /_  /  /  /  /_  /__/
+//
+
 process.title = 'dilated';
 
 var fs = require('fs')
