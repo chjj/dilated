@@ -5,43 +5,26 @@
 // /__/ / /_  /  /  /  /_  /__/
 //
 
-process.title = 'dilated';
-
-var fs = require('fs')
-  , path = require('path')
-  , http = require('http')
-  , fread = fs.readFileSync
-  , fwrite = fs.writeFileSync;
-
-/**
- * Settings
- */
-
-var config = require('./config.json');
-
-config.content = config.content.replace(/^\./, __dirname);
-config.root = __dirname;
-
-module.config = config;
-
 /**
  * Modules
  */
 
-var express = require('express')
-  , app = express()
-  , dev = app.settings.env === 'development';
+var fs = require('fs')
+  , path = require('path')
+  , http = require('http')
+  , EventEmitter = require('events').EventEmitter;
 
-var Post = require('./lib/data').Post
+var express = require('express')
+  , csslike = require('csslike')
+  , liquor = require('liquor');
+
+var data = require('./lib/data')
   , handle = require('./lib/handle')
-  , utils = require('./lib/utils')
-  , csslike = require('csslike');
+  , utils = require('./lib/utils');
 
 /**
- * Extra
+ * Liquor Extensions
  */
-
-var liquor = require('liquor');
 
 function load(views, filename) {
   var filename = path.join(views, filename)
@@ -96,13 +79,13 @@ function renderFile(file, options, callback) {
 
 liquor.renderFile = renderFile;
 
+/**
+ * Prototype Extensions
+ */
+
 var Response = http.ServerResponse
   , Request = http.ClientRequest
-  , Application = app.constructor;
-
-/**
- * Response
- */
+  , Application = express.application;
 
 Response.prototype.cached = function(tag) {
   if (this.app.settings.env === 'development') return false;
@@ -199,10 +182,6 @@ Request.prototype.__defineGetter__('fresh', function() {
   return !this.stale;
 });
 
-Application.prototype.error = function(func) {
-  this._errorHandler = func;
-};
-
 Response.prototype.local = function(key, val) {
   if (arguments.length === 2) {
     var obj = this.locals() || {};
@@ -213,131 +192,266 @@ Response.prototype.local = function(key, val) {
   }
 };
 
+Application.error = function(func) {
+  this._errorHandler = func;
+};
+
+/**
+ * Server
+ */
+
+function Server(options) {
+  if (!(this instanceof Server)) {
+    return new Server(options);
+  }
+
+  var self = this;
+
+  try {
+    this.conf = require('./config.json');
+  } catch (e) {
+    this.conf = {};
+  }
+
+  this.conf.content = this.conf.content.replace(/^\./, __dirname);
+  this.conf.root = __dirname;
+
+  Object.keys(options || {}).forEach(function(key) {
+    if (self.conf[key] === undefined) {
+      self.conf[key] = options[key];
+    }
+  });
+
+  this.app = express();
+
+  this.server = this.conf.https && this.conf.https.key
+    ? require('https').createServer(this.conf.https)
+    : require('http').createServer();
+
+  this.server.on('request', this.app);
+
+  this.on('listening', function() {
+    self.log('Listening on port \x1b[1m%s\x1b[m.', self.conf.port);
+  });
+
+  this.init();
+}
+
+Server.prototype.init = function() {
+  this.init = function() {};
+
+  this.modules = {};
+  this.modules.data = data(this);
+  this.modules.handle = handle(this);
+
+  this.initConfig();
+  this.initMiddleware();
+  this.initRoutes();
+};
+
 /**
  * Configure
  */
 
-app.set('root', __dirname);
-app.set('views', __dirname + '/view');
-app.engine('.html', liquor.renderFile);
+Server.prototype.initConfig = function() {
+  var self = this
+    , app = this.app;
 
-//app.error(function(err, req, res) {
-//  res.render('error.html', {
-//    title: err.phrase,
-//    message: err.body || err.phrase,
-//    back: req.header('referer') || '.'
-//  });
-//});
+  if (this.conf.dev == null) {
+    this.conf.dev = app.settings.env === 'development';
+  }
+
+  app.configure('development', function() {
+    self.conf.port = self.conf.port || 8080;
+  });
+
+  app.configure('production', function() {
+    self.conf.port = self.conf.port || 80;
+  });
+
+  app.set('root', __dirname);
+  app.set('views', __dirname + '/view');
+  app.engine('.html', liquor.renderFile);
+
+  //app.error(function(err, req, res) {
+  //  res.render('error.html', {
+  //    title: err.phrase,
+  //    message: err.body || err.phrase,
+  //    back: req.header('referer') || '.'
+  //  });
+  //});
+};
 
 /**
  * Middleware
  */
 
-app.configure('development', function() {
-  app.use(express.responseTime());
-});
+Server.prototype.initMiddleware = function() {
+  var self = this
+    , app = this.app;
 
-app.use(function(req, res, next) {
-  req.pathParts = req.path.replace(/^\/+|\/+$/g, '').split('/');
-  next();
-});
-
-app.configure('production', function() {
-  app.use(express.log({
-    path: __dirname + '/http.log',
-    limit: 5 * 1024 * 1024
-  }));
-});
-
-
-app.use(express.favicon(__dirname + '/static/favicon.ico'));
-app.use(express.cookieParser());
-app.use(express.compress());
-
-app.use(express.bodyParser({
-  limit: 100 * 1024
-}));
-
-app.use(function(req, res, next) {
-  res.login = req.cookies.user === config.pass;
-  res.locals({
-    rel: undefined,
-    login: res.login,
-    tags: Post.buildTags(Post.tags.slice(0, 6), req.path[0])
+  app.configure('development', function() {
+    app.use(express.responseTime());
   });
-  next();
-});
 
-app.use('/liquorice',
-  csslike.handle({
-    file: __dirname + '/static/style.css',
-    dir: __dirname,
-    minify: !dev,
-    cache: !dev
-  })
-);
+  app.use(function(req, res, next) {
+    req.pathParts = req.path.replace(/^\/+|\/+$/g, '').split('/');
+    next();
+  });
 
-//app.use(utils.pretty.handle);
+  if (this.conf.log) {
+    app.use(express.logger({
+      stream: fs.createWriteStream(this.conf.log)
+    }));
+  }
 
-//app.use(express.router(app));
+  app.use(express.favicon(__dirname + '/static/favicon.ico'));
+  app.use(express.cookieParser());
+  app.use(express.compress());
 
-app.use(express.static(__dirname + '/static'));
+  app.use(express.bodyParser({
+    limit: 100 * 1024
+  }));
+
+  var Post = this.modules.data.Post;
+
+  app.use(function(req, res, next) {
+    res.login = req.cookies.user === self.conf.pass;
+    res.locals({
+      rel: undefined,
+      login: res.login,
+      tags: Post.buildTags(Post.tags.slice(0, 6), req.pathParts[0])
+    });
+    next();
+  });
+
+  app.use('/liquorice',
+    csslike.handle({
+      file: __dirname + '/static/style.css',
+      dir: __dirname,
+      minify: !self.conf.dev,
+      cache: !self.conf.dev
+    })
+  );
+
+  //app.use(utils.pretty.handle);
+
+  app.use(app.router);
+
+  app.use(express.static(__dirname + '/static'));
+
+  //app.use(function(err, req, res, next) {
+  //  res.render('error.html', {
+  //    title: err.phrase,
+  //    message: err.body || err.phrase,
+  //    back: req.header('referer') || '.'
+  //  });
+  //});
+
+  /**
+   * Error Handling
+   */
+
+  app.configure('production', function() {
+    if (process.listeners('uncaughtException').length) return;
+    process.on('uncaughtException', function(err) {
+      err = err.stack || err + '';
+      self.error(new Date().toISOString() + ': ' + err);
+    });
+  });
+};
 
 /**
  * Routes
  */
 
-app.get('/feed', handle.feed);
+Server.prototype.initRoutes = function() {
+  var self = this;
 
-app.get('/logout', handle.logout);
-app.get('/admin', handle.admin);
-app.post('/admin', handle.login);
+  var handle = this.modules.handle;
+  var app = this.app;
 
-app.get('/browse', handle.year);
+  app.get('/feed', handle.feed);
 
-app.get('/sitemap.xml', handle.sitemap);
+  app.get('/logout', handle.logout);
+  app.get('/admin', handle.admin);
+  app.post('/admin', handle.login);
 
-app.get('/', handle.search);
+  app.get('/browse', handle.year);
 
-app.get('*', handle.display);
+  app.get('/sitemap.xml', handle.sitemap);
 
-app.post('*', handle.modify);
-app.put('*', handle.modify);
-app.del('*', handle.modify);
+  app.get('/', handle.search);
 
-//app.use(function(err, req, res, next) {
-//  res.render('error.html', {
-//    title: err.phrase,
-//    message: err.body || err.phrase,
-//    back: req.header('referer') || '.'
-//  });
-//});
+  app.get('*', handle.display);
+
+  app.post('*', handle.modify);
+  app.put('*', handle.modify);
+  app.del('*', handle.modify);
+};
+
+Server.prototype.log = function() {
+  return console.log.apply(console, arguments);
+};
+
+Server.prototype.error = function() {
+  return console.error.apply(console, arguments);
+};
+
+Server.prototype.warning = function() {
+  return console.error.apply(console, arguments);
+};
+
+Server.prototype.listen = function(port, hostname, func) {
+  port = port || this.conf.port || 8080;
+  hostname = hostname || this.conf.hostname;
+  return this.server.listen(port, hostname, func);
+};
 
 /**
- * Error Handling
+ * "Inherit" Express Methods
  */
 
-app.configure('production', function() {
-  process.on('uncaughtException', function(err) {
-    err = err.stack || err + '';
-    console.error(new Date().toISOString() + ': ' + err);
-  });
+// Methods
+Object.keys(express.application).forEach(function(key) {
+  if (Server.prototype[key]) return;
+  Server.prototype[key] = function() {
+    return this.app[key].apply(this.app, arguments);
+  };
+});
+
+// Middleware
+Object.getOwnPropertyNames(express).forEach(function(key) {
+  var prop = Object.getOwnPropertyDescriptor(express, key);
+  if (typeof prop.get !== 'function') return;
+  Object.defineProperty(Server, key, prop);
+});
+
+// Server Methods
+Object.keys(EventEmitter.prototype).forEach(function(key) {
+  if (Server.prototype[key]) return;
+  Server.prototype[key] = function() {
+    return this.server[key].apply(this.server, arguments);
+  };
 });
 
 /**
  * Listen
  */
 
-app.configure('development', function() {
-  app.listen(8080);
-});
+if (!module.parent) {
+  process.title = 'dilated';
 
-app.configure('production', function() {
-  app.listen(80);
-});
+  var app = new Server({
+    port: 8080,
+    log: __dirname + '/http.log'
+  });
+
+  app.listen();
+}
 
 /**
  * Expose
  */
 
-module.exports = app;
+module.exports = Server;
