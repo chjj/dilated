@@ -1,6 +1,6 @@
 {
   "name": "dilated",
-  "description": "a node weblog",
+  "description": "Weblog",
   "author": "Christopher Jeffrey",
   "version": "0.0.1",
   "dependencies": {
@@ -11,8 +11,10 @@
     "csslike": "*"
   },
   "keywords": ["blog"],
+  "tags": ["blog"],
   "repository": "git://github.com/chjj/dilated",
-  "main": "./server",
-  "bin": { "dilate": "./dilate" },
-  "scripts": { "start": "./dilate" }
+  "main": "./index.js",
+  "bin": "./bin/dilated",
+  "man": "./man/dilated.1",
+  "scripts": { "start": "./bin/dilated" }
 }
