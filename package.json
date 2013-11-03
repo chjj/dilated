@@ -6,7 +6,7 @@
   "dependencies": {
     "pingback": "*",
     "marked": "*",
-    "vanilla": "*",
+    "express": "*",
     "liquor": "*",
     "csslike": "*"
   },
