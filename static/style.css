@@ -79,11 +79,12 @@ figure, blockquote, pre { padding: 20px; }
     }
 
 h1, h2, h3, h4, h5, h6, dt {
-  font: normal 60px/20px serif;
+  /*font: normal 60px/20px serif;*/
+  font: normal 60px/1.2 sans-serif;
   letter-spacing: 0.05em;
   padding: 0; margin: 0 0 20px;
 }
-  h1 { line-height: 60px; }
+  h1 { /*line-height: 60px;*/ }
   h2 { font-size: 26px; }
   h3, dt { font-size: 22px; }
   h4 { font-size: 18px; }
@@ -150,7 +151,7 @@ form > p:first-letter {
  */
 
 ol, ul { padding-left: 20px; }
-  li { margin: 0 0 10px; padding: 0; }
+  li { margin: 0 0 10px; padding: 0; margin: 2px 0 2px 0; }
     li:nth-child(odd):last-child { padding-bottom: 10px; }
 dd { margin-left: 20px; }
 
