@@ -6,7 +6,7 @@
   "dependencies": {
     "pingback": "0.0.3",
     "marked": ">=0.2.10",
-    "express": "3.1.0",
+    "express": "3.4.4",
     "liquor": ">=0.0.4",
     "csslike": "0.0.2"
   },
