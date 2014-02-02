@@ -15,9 +15,3 @@ var conf = dilated.config.readConfig()
   , app = dilated.createServer(conf);
 
 app.listen();
-
-// Hookable version:
-// app.server.on('request', function(req, res) {
-//   return app.app(req, res);
-// });
-// app.server.listen(app.conf.port, app.conf.hostname);
