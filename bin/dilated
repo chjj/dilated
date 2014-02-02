@@ -4,7 +4,7 @@
  *  /  / / /   /__/  /  /_  /  /     / /  /
  * /__/ / /_  /  /  /  /_  /__/  .  / /__/
  *
- * Copyright (c) 2011-2013, Christopher Jeffrey (MIT License)
+ * Copyright (c) 2011-2014, Christopher Jeffrey (MIT License)
  */
 
 process.title = 'dilated';
@@ -15,3 +15,9 @@ var conf = dilated.config.readConfig()
   , app = dilated.createServer(conf);
 
 app.listen();
+
+// Hookable version:
+// app.server.on('request', function(req, res) {
+//   return app.app(req, res);
+// });
+// app.server.listen(app.conf.port, app.conf.hostname);
