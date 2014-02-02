@@ -1,4 +1,1 @@
-config.json
-content
-*.log
-.pid
+node_modules/
