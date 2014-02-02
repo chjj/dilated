@@ -15,7 +15,7 @@
       Browse
     </a></li>
     @:tags
-      <li><a href="/#{this.tag}"#{this.set ? ' rel="tag"' : ''}>
+      <li><a href="#{path[0] === 'browse' ? '/browse' : ''}/#{this.tag}"#{this.set ? ' rel="tag"' : ''}>
         #{this.tag}
       </a></li>
   </ul></nav>
