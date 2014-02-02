@@ -5,17 +5,18 @@
   "version": "0.0.1",
   "dependencies": {
     "pingback": "0.0.3",
-    "marked": ">=0.2.10",
-    "express": "3.4.4",
-    "liquor": ">=0.0.4",
-    "csslike": "0.0.2"
+    "marked": "0.3.1",
+    "express": "3.4.8",
+    "liquor": "0.0.4",
+    "csslike": "0.0.2",
+    "body-parser": "1.0.0",
+    "compression": "1.0.0"
   },
   "keywords": ["blog", "markdown", "dilated"],
   "tags": ["blog", "markdown", "dilated"],
   "repository": "git://github.com/chjj/dilated",
   "main": "./index.js",
   "bin": "./bin/dilated",
-  "man": "./man/dilated.1",
   "scripts": {
     "start": "./bin/dilated"
   }
