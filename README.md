@@ -19,7 +19,7 @@ The code is somewhat narrow in what it was designed for. If you want to use
 this blog yourself, be prepared to make a few changes. This is a project of
 mine that will remain an indefinite work in progress.
 
-### Contribution and License Agreement
+## Contribution and License Agreement
 
 If you contribute code to this project, you are implicitly allowing your code
 to be distributed under the MIT license. You are also implicitly verifying that
