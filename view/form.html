@@ -1,6 +1,6 @@
 <!extends "section.html">
 
-<form action="#{form.action}" method="POST">
+<form action="#{root}#{form.action}" method="POST">
   <label>
     Title:
     <input type="text" name="title" value="#{post.title}" required>

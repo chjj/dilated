@@ -6,9 +6,9 @@
 `if ((typeof back !== "undefined" && back) || (typeof forward !== "undefined" && forward)) {`
   <footer>
     ?:back
-      <a href="#{back}" rel="prev">Back</a>
+      <a href="#{root}#{back}" rel="prev">Back</a>
     ?:forward
-      <a href="#{forward}" rel="next">Forward</a>
+      <a href="#{root}#{forward}" rel="next">Forward</a>
   </footer>
 `}`
 </section>

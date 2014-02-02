@@ -2,12 +2,12 @@
 
 <article>
   <header>
-    <h1><a href="#{post.permalink}" rel="bookmark">
+    <h1><a href="#{root}#{post.permalink}" rel="bookmark">
       #{post.title}
     </a></h1>
     <time datetime="#{post.datetime}" pubdate>
       ?:post.edit
-        <a href="#{post.edit}">#{post.timestamp}</a>
+        <a href="#{root}#{post.edit}">#{post.timestamp}</a>
       !:post.edit
         #{post.timestamp}
     </time>
@@ -15,25 +15,25 @@
   #{post.content}
   <footer>
     !:post.previous
-      <a href="#{post.permalink}" rel="bookmark first" title="Permalink">
+      <a href="#{root}#{post.permalink}" rel="bookmark first" title="Permalink">
         Current Article
       </a>
     ?:post.previous
-      <a href="#{post.previous.href}" rel="prev" title="#{post.previous.title}">
+      <a href="#{root}#{post.previous.href}" rel="prev" title="#{post.previous.title}">
         Previous Article
       </a>
     ?:post.next
-      <a href="#{post.next.href}" rel="next" title="#{post.next.title}">
+      <a href="#{root}#{post.next.href}" rel="next" title="#{post.next.title}">
         Next Article
       </a>
     !:post.next
-      <a href="#{post.permalink}" rel="bookmark last" title="Permalink">
+      <a href="#{root}#{post.permalink}" rel="bookmark last" title="Permalink">
         Current Article
       </a>
     ?:post.tags
       <ul>
         @:post.tags
-          <li><a href="/#{this.tag + post.permalink}"#{this.set ? ' rel="self"' : ''}>
+          <li><a href="#{root}/#{this.tag + post.permalink}"#{this.set ? ' rel="self"' : ''}>
             #{this.tag}
           </a></li>
       </ul>

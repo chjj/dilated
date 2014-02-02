@@ -5,7 +5,7 @@ be worthwhile to try the search up above.</p>
 <ol>
   @:list
     <li>
-      <a href="#{tags.current ? '/' + tags.current : ''}#{this.href}">#{this.text}</a>
+      <a href="#{root}#{tags.current ? '/' + tags.current : ''}#{this.href}">#{this.text}</a>
       ?:this.time
         <time datetime="#{this.datetime}">
           #{this.time}

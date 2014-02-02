@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US" xml:base="http://#{host}/">
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US" xml:base="http://#{host}#{root}/">
   <title>dilated</title>
-  <link rel="self" type="application/atom+xml" href="http://#{host + self}"/>
-  <link rel="alternate" type="text/html" href="http://#{host + alternate}"/>
+  <link rel="self" type="application/atom+xml" href="http://#{host + root + self}"/>
+  <link rel="alternate" type="text/html" href="http://#{host + root + alternate}"/>
   <id>#{id}</id>
   <updated>#{updated}</updated>
   <rights>© 2010-#{new Date().getFullYear()}, Christopher Jeffrey</rights>
   <author>
     <name>Christopher Jeffrey</name>
-    <uri>http://#{host}/about</uri>
+    <uri>http://#{host}#{root}/about</uri>
   </author>
   @:entries
     <entry>
       <title>#{this.title}</title>
-      <link rel="alternate" type="text/html" href="http://#{host + this.href}"/>
+      <link rel="alternate" type="text/html" href="http://#{host + root + this.href}"/>
       <id>#{this.id}</id>
       <published>#{this.published}</published>
       <updated>#{this.updated}</updated>
