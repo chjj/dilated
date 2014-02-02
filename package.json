@@ -2,7 +2,7 @@
   "name": "dilated",
   "description": "a dynamic markdown-based weblog",
   "author": "Christopher Jeffrey",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "dependencies": {
     "pingback": "0.0.3",
     "marked": "0.3.1",
