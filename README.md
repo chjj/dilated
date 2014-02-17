@@ -69,6 +69,15 @@ app = dilated.createServer(conf);
 realApp.use('/blog', app);
 ```
 
+``` js
+var dilated = require('dilated');
+
+var conf = dilated.config.readConfig()
+  , app = dilated.createServer(conf);
+
+realApp.use(express.vhost('*blog.example.com', app.handle));
+```
+
 ## Contribution and License Agreement
 
 If you contribute code to this project, you are implicitly allowing your code
