@@ -47,7 +47,7 @@ var conf = dilated.config.readConfig()
   , app = dilated.createServer(conf);
 
 app.server.on('request', function(req, res) {
-  // ...
+  // Handle something here
   return app.handle(req, res);
 });
 
